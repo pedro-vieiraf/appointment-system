@@ -1,4 +1,4 @@
-package com.pedrovieira.appointment_system;
+package com.pedrovieira.appointmentsystem;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
