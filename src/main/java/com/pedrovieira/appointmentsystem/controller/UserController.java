@@ -21,9 +21,12 @@ public class UserController {
 
   private final UserService userService;
 
+  /**
+   * Post Route for creating new User.
+   */
   @PostMapping
   public UserResponse createUser(@Valid @RequestBody CreateUserRequest request)
       throws EmailAlreadyExistsException {
-
+    return null;
   }
 }
