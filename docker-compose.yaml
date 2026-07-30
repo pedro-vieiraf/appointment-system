@@ -3,6 +3,11 @@ services:
     container_name: app
     build: .
     restart: always
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
     ports:
       - "8080:8080"
 

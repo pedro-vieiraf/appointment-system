@@ -32,7 +32,6 @@ public class UserService {
         request.password()
     );
 
-
     String hashedPassword = passwordEncoder.encode(request.password());
 
     user.setPassword(hashedPassword);
