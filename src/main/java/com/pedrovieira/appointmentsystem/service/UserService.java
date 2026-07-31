@@ -2,7 +2,7 @@ package com.pedrovieira.appointmentsystem.service;
 
 import com.pedrovieira.appointmentsystem.dto.request.CreateUserRequest;
 import com.pedrovieira.appointmentsystem.entity.User;
-import com.pedrovieira.appointmentsystem.exception.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,7 +23,7 @@ public class UserService {
    */
   public User createUser(CreateUserRequest request) throws EmailAlreadyExistsException {
     if (userRepository.existsByEmail(request.email())) {
-      throw new EmailAlreadyExistsException(request.email());
+      throw new EmailAlreadyExistsException();
     }
 
     User user = new User(

@@ -3,7 +3,7 @@ package com.pedrovieira.appointmentsystem.service;
 import com.pedrovieira.appointmentsystem.dto.request.CreateUserRequest;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
-import com.pedrovieira.appointmentsystem.exception.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,10 +70,16 @@ public class UserServiceTest {
     when(userRepository.existsByEmail(request.email()))
         .thenReturn(true);
 
-    // Act + Assert
-    assertThrows(
+    // Act
+    EmailAlreadyExistsException exception = assertThrows(
         EmailAlreadyExistsException.class,
         () -> userService.createUser(request)
+    );
+
+    // Assert
+    assertEquals(
+        "Email already registered.",
+        exception.getMessage()
     );
   }
 

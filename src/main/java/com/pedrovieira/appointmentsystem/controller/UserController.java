@@ -7,6 +7,7 @@ import com.pedrovieira.appointmentsystem.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,14 +28,16 @@ public class UserController {
    * Post Route for creating new User.
    */
   @PostMapping("/register")
-  @ResponseStatus(HttpStatus.CREATED)
-  public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
+  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
     User newUser = userService.createUser(request);
 
-    return new UserResponse(
+    UserResponse response = new UserResponse(
         newUser.getId(),
         newUser.getFullName(),
         newUser.getEmail()
     );
+
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(response);
   }
 }
