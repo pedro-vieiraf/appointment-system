@@ -220,7 +220,7 @@ public class UserControllerTest {
                 .content(objectMapper.writeValueAsString(request))
         )
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.message").value("Password must have at least 8 characters."));
+        .andExpect(jsonPath("$.message").value("Password is required."));
 
     verifyNoInteractions(userService);
   }

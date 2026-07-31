@@ -4,10 +4,12 @@ import com.pedrovieira.appointmentsystem.dto.request.CreateUserRequest;
 import com.pedrovieira.appointmentsystem.dto.response.UserResponse;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.service.UserService;
+import com.pedrovieira.appointmentsystem.validation.OrderedValidation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,7 +30,9 @@ public class UserController {
    * Post Route for creating new User.
    */
   @PostMapping("/register")
-  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+  public ResponseEntity<UserResponse> createUser(
+      @Validated(OrderedValidation.class)
+      @RequestBody CreateUserRequest request) {
     User newUser = userService.createUser(request);
 
     UserResponse response = new UserResponse(
