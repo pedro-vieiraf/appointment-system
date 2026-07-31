@@ -15,6 +15,9 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
+  /**
+   * Security Filter Chain for all basic security configurations.
+   */
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
@@ -33,6 +36,9 @@ public class SecurityConfig {
     return http.build();
   }
 
+  /**
+   * Password encoder.
+   */
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();

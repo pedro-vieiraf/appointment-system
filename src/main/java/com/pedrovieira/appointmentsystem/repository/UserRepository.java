@@ -10,5 +10,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
+  /**
+   * Boolean that returns if email already is registered.
+   */
   boolean existsByEmail(String email);
 }

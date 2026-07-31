@@ -1,18 +1,24 @@
 package com.pedrovieira.appointmentsystem.exception;
 
 import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Global Exception Handler to catch all exceptions in Controllers.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+  /**
+   * ExceptionHandler for EmailAlreadyExists.
+   */
   @ExceptionHandler(EmailAlreadyExistsException.class)
   @ResponseStatus(HttpStatus.CONFLICT)
   public ErrorResponse handleEmailAlreadyExists(
@@ -28,6 +34,9 @@ public class GlobalExceptionHandler {
     );
   }
 
+  /**
+   * ExceptionHandler for MethodArgumentNotValid.
+   */
   @ExceptionHandler(MethodArgumentNotValidException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   public ErrorResponse handleValidation(
@@ -48,6 +57,9 @@ public class GlobalExceptionHandler {
     );
   }
 
+  /**
+   * ExceptionHandler for HttpMessageNotReadable.
+   */
   @ExceptionHandler(HttpMessageNotReadableException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   public ErrorResponse handleMalformedJson(
