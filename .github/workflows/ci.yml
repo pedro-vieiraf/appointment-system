@@ -1,4 +1,4 @@
-name: CI
+name: CI - Running tests
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
 
 
 jobs:
-  build:
+  ci:
 
     runs-on: ubuntu-latest
 
@@ -44,11 +44,12 @@ jobs:
         with:
           java-version: '21'
           distribution: temurin
+          cache: maven
 
 
       - name: Make mvnw executable
         run: chmod +x mvnw
 
 
-      - name: Test
+      - name: Run tests
         run: ./mvnw verify

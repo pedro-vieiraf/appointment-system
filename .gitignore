@@ -34,3 +34,6 @@ build/
 
 .env
 *.env
+
+### Zone Identifier for Windows Development ###
+echo '*:Zone.Identifier' >> .gitignore
