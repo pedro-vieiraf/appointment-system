@@ -61,17 +61,49 @@ public class CheckstyleReporter {
       filesSection.append("\n");
     }
 
+    int fileCount = countFilesWithErrors(fileNodes);
+    String body = buildCommentBody(totalErrors, fileCount, filesSection.toString());
+
+    postComment(repo, prNumber, token, body);
+  }
+
+  private static int countFilesWithErrors(NodeList fileNodes) {
+    int count = 0;
+    for (int i = 0; i < fileNodes.getLength(); i++) {
+      Element fileEl = (Element) fileNodes.item(i);
+      if (fileEl.getElementsByTagName("error").getLength() > 0) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private static String buildCommentBody(int totalErrors, int fileCount, String filesSection) {
     StringBuilder body = new StringBuilder();
+
     if (totalErrors == 0) {
-      body.append("**Não foram encontrados erros**");
-    } else {
-      body.append("**Foram encontrados ")
-          .append(totalErrors)
-          .append(" avisos:**\n\n")
-          .append(filesSection);
+      body.append("## ✅ Checkstyle — Nenhuma violação encontrada\n\n")
+          .append("Todo o código analisado está de acordo com o guia de estilo "
+              + "(Google Java Style).\n");
+      return body.toString();
     }
 
-    postComment(repo, prNumber, token, body.toString());
+    body.append("## ⚠️ Checkstyle — ")
+        .append(totalErrors)
+        .append(totalErrors == 1 ? " violação encontrada\n\n" : " violações encontradas\n\n")
+        .append("| Métrica | Valor |\n")
+        .append("|---|---|\n")
+        .append("| Arquivos afetados | ").append(fileCount).append(" |\n")
+        .append("| Total de violações | ").append(totalErrors).append(" |\n")
+        .append("| Guia de estilo | Google Java Style |\n\n")
+        .append("<details>\n")
+        .append("<summary>Ver detalhes das violações</summary>\n\n")
+        .append(filesSection)
+        .append("</details>\n\n")
+        .append("---\n")
+        .append("_Comentário gerado automaticamente pelo Checkstyle CI._\n");
+
+    return body.toString();
   }
 
   private static void postComment(String repo, String prNumber, String token, String body)
