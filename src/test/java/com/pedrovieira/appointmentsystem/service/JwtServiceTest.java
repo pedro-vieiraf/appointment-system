@@ -3,15 +3,28 @@ package com.pedrovieira.appointmentsystem.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import com.pedrovieira.appointmentsystem.entity.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("Testing JwtService functions")
 public class JwtServiceTest {
 
+  private static final String TEST_SECRET =
+      "01234567890123456789012345678901234567890123456789";
   private JwtService jwtService;
+
+  @BeforeEach
+  public void setUp() {
+    jwtService = new JwtService(TEST_SECRET, Duration.ofMinutes(15));
+  }
 
   @Test
   public void shouldGenerateTokenSuccessfully() {
@@ -60,19 +73,46 @@ public class JwtServiceTest {
         "123456781234"
     );
 
-    String token = jwtService.generateToken(user);
+    String token = jwtService.generateToken(user1);
 
     // Act + Assert
-    assertFalse(jwtService.isTokenValid(token, user2));
+    assertFalse(jwtService.isValidToken(token, user2));
   }
 
   @Test
-  public void shouldReturnTrueForValidToken() {
+  public void shouldValidateGeneratedToken() {
+    // Arrange
+    User user = new User(
+        "User Resu",
+        "user@email.com",
+        "superstrongpassword"
+    );
 
+    String token = jwtService.generateToken(user);
+
+    // Act + Assert
+    assertTrue(jwtService.isValidToken(token, user));
   }
 
   @Test
   public void shouldReturnFalseForExpiredToken() {
+    // Arrange
+    Clock pastClock = Clock.fixed(
+        Instant.now().minus(Duration.ofMinutes(20)),
+        ZoneOffset.UTC
+    );
+    JwtService serviceWithPastClock = new JwtService(TEST_SECRET, Duration.ofMinutes(15),
+        pastClock);
 
+    User user = new User(
+        "User Resu",
+        "user@email.com",
+        "superstrongpassword"
+    );
+
+    String token = serviceWithPastClock.generateToken(user);
+
+    // Act + Assert
+    assertFalse(jwtService.isValidToken(token, user));
   }
 }

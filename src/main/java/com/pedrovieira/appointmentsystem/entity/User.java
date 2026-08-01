@@ -72,6 +72,8 @@ public class User implements UserDetails {
 
   @Override
   public String getUsername() {
+    // Login is performed via email; there is no separate "username" in the domain.
+    // This method exists solely to satisfy the UserDetails contract.
     return email;
   }
 }
