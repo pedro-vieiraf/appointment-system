@@ -8,8 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.pedrovieira.appointmentsystem.config.SecurityConfig;
 import com.pedrovieira.appointmentsystem.dto.request.LoginRequest;
 import com.pedrovieira.appointmentsystem.dto.response.LoginResponse;
+import com.pedrovieira.appointmentsystem.exception.user.InvalidCredentialsException;
 import com.pedrovieira.appointmentsystem.service.AuthenticationService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -32,29 +34,82 @@ public class AuthControllerLoginTest {
   @Autowired
   private ObjectMapper objectMapper;
 
-  @Test
-  public void shouldReturnTokenForValidCredentials() throws Exception {
-    // Arrange
-    LoginRequest request = new LoginRequest(
-        "userTest@mail.com",
-        "superStrongPassword"
-    );
-    LoginResponse response = new LoginResponse(
-        "fake.jwt.token",
-        "Bearer",
-        900
-    );
+  @Nested
+  @DisplayName("Happy Path")
+  class HappyPath {
 
-    when(authenticationService.login(request))
-        .thenReturn(response);
+    @Test
+    public void shouldReturnTokenForValidCredentials() throws Exception {
+      // Arrange
+      LoginRequest request = new LoginRequest(
+          "userTest@mail.com",
+          "superStrongPassword"
+      );
+      LoginResponse response = new LoginResponse(
+          "fake.jwt.token",
+          "Bearer",
+          900
+      );
 
-    // Act + Assert
-    mockMvc.perform(post("/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.accessToken").value("fake.jwt.token"))
-        .andExpect(jsonPath("$.tokenType").value("Bearer"))
-        .andExpect(jsonPath("$.expiresIn").value(900));
+      when(authenticationService.login(request))
+          .thenReturn(response);
+
+      // Act + Assert
+      mockMvc.perform(post("/auth/login")
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.accessToken").value("fake.jwt.token"))
+          .andExpect(jsonPath("$.tokenType").value("Bearer"))
+          .andExpect(jsonPath("$.expiresIn").value(900));
+    }
+  }
+
+  @Nested
+  @DisplayName("Validation Errors")
+  class ValidationErrors {
+
+    @Test
+    public void shouldThrowExceptionWhenInvalidEmail() throws Exception {
+      // Arrange
+      LoginRequest request = new LoginRequest(
+          "wrongUser@mail.com",
+          "superStrongPassword"
+      );
+
+      when(authenticationService.login(request))
+          .thenThrow(new InvalidCredentialsException("Invalid credentials."));
+      // Act + Assert
+      mockMvc.perform(
+              post("/auth/login")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.message")
+              .value("Invalid credentials."));
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenInvalidPassword() throws Exception {
+      // Arrange
+      LoginRequest request = new LoginRequest(
+          "userTest@mail.com",
+          "wrongPassword"
+      );
+
+      when(authenticationService.login(request))
+          .thenThrow(new InvalidCredentialsException("Invalid credentials."));
+
+      // Act + Assert
+      mockMvc.perform(
+              post("/auth/login")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.message")
+              .value("Invalid credentials."));
+    }
   }
 }
