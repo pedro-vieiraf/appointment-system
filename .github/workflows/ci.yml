@@ -56,6 +56,11 @@ jobs:
 
 
       - name: Run tests
+        env:
+          JWT_SECRET: test-secret-key-not-for-production-0123456789
+          DB_URL: jdbc:postgresql://localhost:5432/appointment_system
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
         run: ./mvnw verify
 
 
