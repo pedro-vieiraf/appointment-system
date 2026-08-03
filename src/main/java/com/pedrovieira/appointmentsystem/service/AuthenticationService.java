@@ -44,11 +44,17 @@ public class AuthenticationService {
     return userRepository.save(user);
   }
 
+  /**
+   * GetUserByEmail function.
+   */
   public User getUserByEmail(String email) {
     return userRepository.findByEmail(email)
         .orElseThrow(() -> new EmailNotFoundException());
   }
 
+  /**
+   * Login function.
+   */
   public LoginResponse login(LoginRequest request) {
     User user = userRepository.findByEmail(request.email())
         .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials."));

@@ -47,7 +47,7 @@ public class AuthController {
   }
 
   /**
-   * Post Route for login
+   * Post Route for login.
    */
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(
