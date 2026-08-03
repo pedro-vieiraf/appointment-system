@@ -1,6 +1,8 @@
 package com.pedrovieira.appointmentsystem.exception;
 
 import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.exception.user.EmailNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.user.InvalidCredentialsException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import org.springframework.http.HttpStatus;
@@ -23,6 +25,42 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.CONFLICT)
   public ErrorResponse handleEmailAlreadyExists(
       EmailAlreadyExistsException exception,
+      HttpServletRequest request
+  ) {
+    return new ErrorResponse(
+        LocalDateTime.now(),
+        HttpStatus.CONFLICT.value(),
+        HttpStatus.CONFLICT.getReasonPhrase(),
+        exception.getMessage(),
+        request.getRequestURI()
+    );
+  }
+
+  /**
+   * ExceptionHandler for EmailNotFound.
+   */
+  @ExceptionHandler(EmailNotFoundException.class)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  public ErrorResponse handleEmailNotFound(
+      EmailNotFoundException exception,
+      HttpServletRequest request
+  ) {
+    return new ErrorResponse(
+        LocalDateTime.now(),
+        HttpStatus.CONFLICT.value(),
+        HttpStatus.CONFLICT.getReasonPhrase(),
+        exception.getMessage(),
+        request.getRequestURI()
+    );
+  }
+
+  /**
+   * ExceptionHandler for Invalid Credentials.
+   */
+  @ExceptionHandler(InvalidCredentialsException.class)
+  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  public ErrorResponse handleInvalidCredentials(
+      InvalidCredentialsException exception,
       HttpServletRequest request
   ) {
     return new ErrorResponse(
