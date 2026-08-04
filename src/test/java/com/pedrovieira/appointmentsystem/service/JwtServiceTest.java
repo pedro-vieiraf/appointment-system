@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.security.JwtService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -50,7 +51,7 @@ public class JwtServiceTest {
     );
 
     user.setId(1L);
-    
+
     String token = jwtService.generateToken(user);
 
     // Act

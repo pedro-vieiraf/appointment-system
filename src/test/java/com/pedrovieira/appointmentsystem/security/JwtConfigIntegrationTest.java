@@ -1,9 +1,8 @@
-package com.pedrovieira.appointmentsystem.service;
+package com.pedrovieira.appointmentsystem.security;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.pedrovieira.appointmentsystem.config.JwtConfig;
 import com.pedrovieira.appointmentsystem.config.JwtProperties;
 import com.pedrovieira.appointmentsystem.entity.User;
 import org.junit.jupiter.api.Test;

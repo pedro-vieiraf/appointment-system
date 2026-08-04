@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pedrovieira.appointmentsystem.config.SecurityConfig;
 import com.pedrovieira.appointmentsystem.dto.request.RegisterRequest;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.security.SecurityConfig;
 import com.pedrovieira.appointmentsystem.service.AuthenticationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

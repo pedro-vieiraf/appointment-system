@@ -1,6 +1,6 @@
-package com.pedrovieira.appointmentsystem.config;
+package com.pedrovieira.appointmentsystem.security;
 
-import com.pedrovieira.appointmentsystem.service.JwtService;
+import com.pedrovieira.appointmentsystem.config.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -8,6 +8,7 @@ import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsExcept
 import com.pedrovieira.appointmentsystem.exception.user.EmailNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.user.InvalidCredentialsException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
+import com.pedrovieira.appointmentsystem.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
