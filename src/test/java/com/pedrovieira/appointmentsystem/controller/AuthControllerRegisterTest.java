@@ -53,7 +53,7 @@ public class AuthControllerRegisterTest {
             "encrypted"
         );
 
-    when(authenticationService.createUser(any()))
+    when(authenticationService.register(any()))
         .thenReturn(user);
 
     mockMvc.perform(
@@ -68,7 +68,7 @@ public class AuthControllerRegisterTest {
     ArgumentCaptor<RegisterRequest> captor =
         ArgumentCaptor.forClass(RegisterRequest.class);
 
-    verify(authenticationService).createUser(captor.capture());
+    verify(authenticationService).register(captor.capture());
 
     RegisterRequest sent = captor.getValue();
 
@@ -148,7 +148,7 @@ public class AuthControllerRegisterTest {
         "superstrongpassword"
     );
 
-    when(authenticationService.createUser(any()))
+    when(authenticationService.register(any()))
         .thenThrow(new EmailAlreadyExistsException());
 
     // Act + Assert

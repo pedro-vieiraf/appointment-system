@@ -26,18 +26,19 @@ public class AuthenticationService {
   /**
    * CreateUser function.
    */
-  public User createUser(RegisterRequest request) throws EmailAlreadyExistsException {
+  public User register(RegisterRequest request) throws EmailAlreadyExistsException {
+
     if (userRepository.existsByEmail(request.email())) {
       throw new EmailAlreadyExistsException();
     }
 
+    String hashedPassword = passwordEncoder.encode(request.password());
+
     User user = new User(
         request.fullName(),
         request.email(),
-        request.password()
+        hashedPassword
     );
-
-    String hashedPassword = passwordEncoder.encode(request.password());
 
     user.setPassword(hashedPassword);
 

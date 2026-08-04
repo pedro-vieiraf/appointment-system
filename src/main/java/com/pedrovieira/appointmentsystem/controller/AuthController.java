@@ -34,7 +34,7 @@ public class AuthController {
   public ResponseEntity<RegisterResponse> register(
       @Validated(OrderedValidation.class)
       @RequestBody RegisterRequest request) {
-    User newUser = authenticationService.createUser(request);
+    User newUser = authenticationService.register(request);
 
     RegisterResponse response = new RegisterResponse(
         newUser.getId(),

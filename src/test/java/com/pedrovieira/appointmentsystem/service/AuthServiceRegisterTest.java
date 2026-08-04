@@ -1,6 +1,7 @@
 package com.pedrovieira.appointmentsystem.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -45,7 +46,7 @@ public class AuthServiceRegisterTest {
     when(userRepository.save(any(User.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    User result = authenticationService.createUser(request);
+    User result = authenticationService.register(request);
 
     ArgumentCaptor<User> captor =
         ArgumentCaptor.forClass(User.class);
@@ -56,6 +57,10 @@ public class AuthServiceRegisterTest {
 
     assertEquals("User Resu", saved.getFullName());
     assertEquals("user@email.com", saved.getEmail());
+    assertNotEquals(
+        "superstrongpassword",
+        saved.getPassword()
+    );
   }
 
   @Test
@@ -73,7 +78,7 @@ public class AuthServiceRegisterTest {
     // Act
     EmailAlreadyExistsException exception = assertThrows(
         EmailAlreadyExistsException.class,
-        () -> authenticationService.createUser(request)
+        () -> authenticationService.register(request)
     );
 
     // Assert
@@ -81,6 +86,9 @@ public class AuthServiceRegisterTest {
         "Email already registered.",
         exception.getMessage()
     );
+
+    verify(userRepository, never())
+        .save(any(User.class));
   }
 
   @Test
@@ -96,7 +104,7 @@ public class AuthServiceRegisterTest {
         .thenReturn("encryptedPassword");
 
     // Act
-    authenticationService.createUser(request);
+    authenticationService.register(request);
 
     // Assert
     ArgumentCaptor<User> captor =
@@ -129,7 +137,7 @@ public class AuthServiceRegisterTest {
 
     assertThrows(
         EmailAlreadyExistsException.class,
-        () -> authenticationService.createUser(request)
+        () -> authenticationService.register(request)
     );
 
     verify(passwordEncoder, never())
