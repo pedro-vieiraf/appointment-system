@@ -5,11 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.pedrovieira.appointmentsystem.entity.User;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import com.pedrovieira.appointmentsystem.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,13 +49,15 @@ public class JwtServiceTest {
         "superstrongpassword"
     );
 
+    user.setId(1L);
+    
     String token = jwtService.generateToken(user);
 
     // Act
-    String email = jwtService.extractUsername(token);
+    Long userId = jwtService.extractUserId(token);
 
     // Assert
-    assertEquals(user.getUsername(), email);
+    assertEquals(user.getId(), userId);
   }
 
   @Test
@@ -67,11 +69,13 @@ public class JwtServiceTest {
         "superstrongpassword"
     );
 
+    user1.setId(1L);
     User user2 = new User(
         "User Two",
         "user2@email.com",
         "123456781234"
     );
+    user1.setId(2L);
 
     String token = jwtService.generateToken(user1);
 
@@ -80,13 +84,15 @@ public class JwtServiceTest {
   }
 
   @Test
-  public void shouldValidateGeneratedToken() {
+  public void shouldValidateTokenGeneratedForSameUser() {
     // Arrange
     User user = new User(
         "User Resu",
         "user@email.com",
         "superstrongpassword"
     );
+
+    user.setId(1L);
 
     String token = jwtService.generateToken(user);
 

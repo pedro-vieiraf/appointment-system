@@ -21,8 +21,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Testing UserService functions")
-public class AuthenticationServiceTest {
+@DisplayName("Testing Register Service Functions")
+public class AuthServiceRegisterTest {
 
   @Mock
   private UserRepository userRepository;

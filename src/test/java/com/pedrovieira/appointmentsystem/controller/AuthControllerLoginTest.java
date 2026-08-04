@@ -1,5 +1,6 @@
 package com.pedrovieira.appointmentsystem.controller;
 
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -110,6 +111,57 @@ public class AuthControllerLoginTest {
           .andExpect(status().isUnauthorized())
           .andExpect(jsonPath("$.message")
               .value("Invalid credentials."));
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenBlankEmail() throws Exception {
+      // Arrange
+      LoginRequest request = new LoginRequest(
+          "",
+          "superStrongPassword"
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              post("/auth/login")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.message")
+              .value("Email is required."));
+
+      verifyNoInteractions(authenticationService);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenBlankPassword() throws Exception {
+      // Arrange
+      LoginRequest request = new LoginRequest(
+          "userTest@mail.com",
+          ""
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              post("/auth/login")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.message")
+              .value("Password is required."));
+
+      verifyNoInteractions(authenticationService);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenInvalidBody() throws Exception {
+      mockMvc.perform(post("/auth/login")
+              .contentType(MediaType.APPLICATION_JSON)
+              .content("{}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.message").exists());
     }
   }
 }

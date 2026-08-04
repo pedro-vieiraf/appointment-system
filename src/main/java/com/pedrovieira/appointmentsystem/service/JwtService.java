@@ -44,7 +44,7 @@ public class JwtService {
     Date expiration = new Date(now.getTime() + expirationTime.toMillis());
 
     return Jwts.builder()
-        .subject(user.getUsername())
+        .subject(String.valueOf(user.getId()))
         .issuedAt(now)
         .expiration(expiration)
         .signWith(secretKey)
@@ -52,10 +52,10 @@ public class JwtService {
   }
 
   /**
-   * Function to extract username from Token.
+   * Function to extract userId from Token.
    */
-  public String extractUsername(String token) {
-    return extractAllClaims(token).getSubject();
+  public Long extractUserId(String token) {
+    return Long.valueOf(extractAllClaims(token).getSubject());
   }
 
   /**
@@ -63,8 +63,8 @@ public class JwtService {
    */
   public boolean isValidToken(String token, User user) {
     try {
-      String username = extractUsername(token);
-      return username.equals(user.getUsername());
+      Long userId = extractUserId(token);
+      return userId.equals(user.getId());
     } catch (JwtException e) {
       return false;
     }
