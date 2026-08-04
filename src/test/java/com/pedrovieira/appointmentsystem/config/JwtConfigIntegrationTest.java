@@ -28,7 +28,12 @@ class JwtConfigIntegrationTest {
   void shouldWireJwtServiceWithConfiguredProperties() {
     assertNotNull(jwtService);
 
-    User user = new User("User Resu", "user@email.com", "superstrongpassword");
+    User user = new User(
+        "User Resu",
+        "user@email.com",
+        "superstrongpassword");
+
+    user.setId(1L);
     String token = jwtService.generateToken(user);
 
     assertTrue(jwtService.isValidToken(token, user));
