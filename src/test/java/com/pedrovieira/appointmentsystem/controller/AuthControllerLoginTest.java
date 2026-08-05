@@ -9,21 +9,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.pedrovieira.appointmentsystem.dto.request.LoginRequest;
 import com.pedrovieira.appointmentsystem.dto.response.LoginResponse;
 import com.pedrovieira.appointmentsystem.exception.user.InvalidCredentialsException;
-import com.pedrovieira.appointmentsystem.security.SecurityConfig;
+import com.pedrovieira.appointmentsystem.security.JwtAuthenticationFilter;
 import com.pedrovieira.appointmentsystem.service.AuthenticationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@AutoConfigureMockMvc(addFilters = false)
 @DisplayName("Testing Login Controller Functions")
 public class AuthControllerLoginTest {
 
@@ -34,6 +34,8 @@ public class AuthControllerLoginTest {
   private AuthenticationService authenticationService;
   @Autowired
   private ObjectMapper objectMapper;
+  @MockitoBean
+  private JwtAuthenticationFilter jwtAuthenticationFilter;
 
   @Nested
   @DisplayName("Happy Path")

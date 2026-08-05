@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
@@ -31,7 +32,9 @@ public class JwtService {
    * generating and validating tokens.
    */
   public JwtService(String secret, Duration expirationTime, Clock clock) {
-    this.secretKey = Keys.hmacShaKeyFor(secret.getBytes());
+    this.secretKey = Keys.hmacShaKeyFor(
+        secret.getBytes(StandardCharsets.UTF_8)
+    );
     this.expirationTime = expirationTime;
     this.clock = clock;
   }
@@ -61,7 +64,7 @@ public class JwtService {
   /**
    * Function to validate if token is valid.
    */
-  public boolean isValidToken(String token, User user) {
+  public boolean belongsToUser(String token, User user) {
     try {
       Long userId = extractUserId(token);
       return userId.equals(user.getId());
@@ -70,13 +73,22 @@ public class JwtService {
     }
   }
 
-  private boolean isTokenExpired(String token) {
-    return extractAllClaims(token).getExpiration().before(new Date());
+  /**
+   * Function to validate if token is valid without User.
+   */
+  public boolean isValidToken(String token) {
+    try {
+      extractAllClaims(token);
+      return true;
+    } catch (JwtException | IllegalArgumentException e) {
+      return false;
+    }
   }
 
   private Claims extractAllClaims(String token) {
     return Jwts.parser()
         .verifyWith(secretKey)
+        .clock(() -> Date.from(clock.instant()))
         .build()
         .parseSignedClaims(token)
         .getPayload();

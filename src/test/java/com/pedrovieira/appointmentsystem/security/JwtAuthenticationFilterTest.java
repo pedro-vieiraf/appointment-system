@@ -2,7 +2,9 @@ package com.pedrovieira.appointmentsystem.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pedrovieira.appointmentsystem.entity.User;
@@ -10,6 +12,7 @@ import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import java.util.Optional;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,11 +42,14 @@ public class JwtAuthenticationFilterTest {
     );
   }
 
+  @AfterEach
+  void cleanSecurityContext() {
+    SecurityContextHolder.clearContext();
+  }
+
   @Test
-  void shouldAuthenticateUserWhenTokenIsValid() throws Exception {
-
+  void shouldAuthenticateRequestWhenJwtIsValid() throws Exception {
     // Arrange
-
     MockHttpServletRequest request =
         new MockHttpServletRequest();
 
@@ -60,6 +66,9 @@ public class JwtAuthenticationFilterTest {
     User user = new User();
     user.setId(1L);
 
+    when(jwtService.isValidToken("fake.jwt.token"))
+        .thenReturn(true);
+
     when(jwtService.extractUserId("fake.jwt.token"))
         .thenReturn(1L);
 
@@ -67,7 +76,6 @@ public class JwtAuthenticationFilterTest {
         .thenReturn(Optional.of(user));
 
     // Act
-
     filter.doFilter(
         request,
         response,
@@ -75,7 +83,6 @@ public class JwtAuthenticationFilterTest {
     );
 
     // Assert
-
     Authentication authentication =
         SecurityContextHolder
             .getContext()
@@ -87,5 +94,113 @@ public class JwtAuthenticationFilterTest {
         user,
         authentication.getPrincipal()
     );
+  }
+
+  @Test
+  public void shouldContinueFilterChainWhenTokenIsMissing() throws Exception {
+    // Arrange
+    MockHttpServletRequest request =
+        new MockHttpServletRequest();
+
+    MockHttpServletResponse response =
+        new MockHttpServletResponse();
+
+    FilterChain filterChain =
+        mock(FilterChain.class);
+
+    // Act
+    filter.doFilter(
+        request,
+        response,
+        filterChain
+    );
+
+    // Assert
+    verify(filterChain)
+        .doFilter(request, response);
+  }
+
+  @Test
+  public void shouldNotAuthenticateUserWhenJwtIsInvalid() throws Exception {
+    // Arrange
+    MockHttpServletRequest request =
+        new MockHttpServletRequest();
+
+    request.addHeader(
+        "Authorization",
+        "Bearer invalid.jwt.token"
+    );
+
+    MockHttpServletResponse response =
+        new MockHttpServletResponse();
+
+    FilterChain chain =
+        mock(FilterChain.class);
+
+    when(jwtService.isValidToken("invalid.jwt.token"))
+        .thenReturn(false);
+
+    // Act
+    filter.doFilter(
+        request,
+        response,
+        chain
+    );
+
+    // Assert
+    Authentication authentication =
+        SecurityContextHolder
+            .getContext()
+            .getAuthentication();
+
+    assertNull(authentication);
+
+    verify(chain)
+        .doFilter(request, response);
+  }
+
+  @Test
+  public void shouldContinueFilterChainWhenUserDoesNotExist() throws Exception {
+    // Arrange
+    MockHttpServletRequest request =
+        new MockHttpServletRequest();
+
+    request.addHeader(
+        "Authorization",
+        "Bearer fake.jwt.token"
+    );
+
+    MockHttpServletResponse response =
+        new MockHttpServletResponse();
+
+    FilterChain chain =
+        mock(FilterChain.class);
+
+    when(jwtService.isValidToken("fake.jwt.token"))
+        .thenReturn(true);
+
+    when(jwtService.extractUserId("fake.jwt.token"))
+        .thenReturn(1L);
+
+    when(userRepository.findById(1L))
+        .thenReturn(Optional.empty());
+
+    // Act
+    filter.doFilter(
+        request,
+        response,
+        chain
+    );
+
+    // Assert
+    Authentication authentication =
+        SecurityContextHolder
+            .getContext()
+            .getAuthentication();
+
+    assertNull(authentication);
+
+    verify(chain)
+        .doFilter(request, response);
   }
 }

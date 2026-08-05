@@ -81,7 +81,7 @@ public class JwtServiceTest {
     String token = jwtService.generateToken(user1);
 
     // Act + Assert
-    assertFalse(jwtService.isValidToken(token, user2));
+    assertFalse(jwtService.belongsToUser(token, user2));
   }
 
   @Test
@@ -98,7 +98,7 @@ public class JwtServiceTest {
     String token = jwtService.generateToken(user);
 
     // Act + Assert
-    assertTrue(jwtService.isValidToken(token, user));
+    assertTrue(jwtService.belongsToUser(token, user));
   }
 
   @Test
@@ -120,6 +120,6 @@ public class JwtServiceTest {
     String token = serviceWithPastClock.generateToken(user);
 
     // Act + Assert
-    assertFalse(jwtService.isValidToken(token, user));
+    assertFalse(jwtService.belongsToUser(token, user));
   }
 }

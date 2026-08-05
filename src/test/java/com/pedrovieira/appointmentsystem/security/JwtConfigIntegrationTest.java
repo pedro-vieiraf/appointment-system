@@ -1,10 +1,9 @@
 package com.pedrovieira.appointmentsystem.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.pedrovieira.appointmentsystem.config.JwtProperties;
-import com.pedrovieira.appointmentsystem.entity.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,17 +23,18 @@ class JwtConfigIntegrationTest {
   private JwtService jwtService;
 
   @Test
-  void shouldWireJwtServiceWithConfiguredProperties() {
+  void shouldCreateJwtServiceBeanWithConfiguredProperties() {
+    // Assert
     assertNotNull(jwtService);
+  }
 
-    User user = new User(
-        "User Resu",
-        "user@email.com",
-        "superstrongpassword");
 
-    user.setId(1L);
-    String token = jwtService.generateToken(user);
-
-    assertTrue(jwtService.isValidToken(token, user));
+  @Test
+  void shouldConfigureExpirationTimeCorrectly() {
+    // Assert
+    assertEquals(
+        900L,
+        jwtService.getExpirationInSeconds()
+    );
   }
 }
