@@ -14,7 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
- * Service that will handle users.
+ * Service that will handle users authentication.
  */
 @Service
 @RequiredArgsConstructor
