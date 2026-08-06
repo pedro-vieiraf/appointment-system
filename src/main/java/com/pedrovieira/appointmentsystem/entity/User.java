@@ -22,7 +22,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 @Table(name = "users")
 public class User implements UserDetails {
 
-  // Initial commit
   @Getter
   @Setter
   @Id
