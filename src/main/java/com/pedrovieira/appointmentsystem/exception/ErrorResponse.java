@@ -2,6 +2,9 @@ package com.pedrovieira.appointmentsystem.exception;
 
 import java.time.LocalDateTime;
 
+/**
+ * Standard response format for errors.
+ */
 public record ErrorResponse(
     LocalDateTime timestamp,
     int status,
@@ -9,4 +12,5 @@ public record ErrorResponse(
     String message,
     String path
 ) {
+
 }

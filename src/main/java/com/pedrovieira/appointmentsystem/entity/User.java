@@ -9,7 +9,6 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
-
 import lombok.Getter;
 import lombok.Setter;
 import org.jspecify.annotations.Nullable;
@@ -55,7 +54,7 @@ public class User implements UserDetails {
   /**
    * User Constructor for general use.
    */
-  public User(String fullName,  String email, String password) {
+  public User(String fullName, String email, String password) {
     this.fullName = fullName;
     this.email = email;
     this.password = password;
@@ -73,6 +72,8 @@ public class User implements UserDetails {
 
   @Override
   public String getUsername() {
+    // Login is performed via email; there is no separate "username" in the domain.
+    // This method exists solely to satisfy the UserDetails contract.
     return email;
   }
 }
