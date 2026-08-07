@@ -12,5 +12,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
+  /**
+   * Verify if time is taken to new appointments.
+   */
   boolean existsByUserAndAppointmentDate(User attr0, LocalDateTime attr1);
 }
