@@ -99,8 +99,4 @@ public class Appointment {
   public void markAsCompleted() {
     status = AppointmentStatus.COMPLETED;
   }
-
-  public LocalDateTime getAppointmentDate() {
-    return appointmentDate;
-  }
 }
