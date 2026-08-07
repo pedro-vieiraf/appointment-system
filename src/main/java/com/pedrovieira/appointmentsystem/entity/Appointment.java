@@ -38,12 +38,7 @@ public class Appointment {
   @Getter
   @Setter
   @Column(nullable = false)
-  private LocalDateTime startAt;
-
-  @Getter
-  @Setter
-  @Column(nullable = false)
-  private LocalDateTime endAt;
+  private LocalDateTime appointmentDate;
 
   @Getter
   @Setter
@@ -72,26 +67,40 @@ public class Appointment {
   /**
    * Standard constructor for appointments.
    */
-  public Appointment(String title, LocalDateTime startAt, LocalDateTime endAt,
-      AppointmentStatus status, User user) {
-    this.title = title;
-    this.startAt = startAt;
-    this.endAt = endAt;
-    this.status = status;
+  public Appointment(User user, String title, LocalDateTime appointmentDate) {
     this.user = user;
+    this.title = title;
+    this.appointmentDate = appointmentDate;
+    this.status = AppointmentStatus.PENDING;
+
   }
 
   /**
-   * Method to cancel an appointment.
+   * Method to markAsConfirmed an appointment.
    */
-  public void cancel() {
+  public void markAsConfirmed() {
+    if (status != AppointmentStatus.PENDING) {
+      throw new IllegalStateException("Status must be PENDING");
+    }
+
+    this.status = AppointmentStatus.CONFIRMED;
+  }
+
+  /**
+   * Method to markAsCanceled an appointment.
+   */
+  public void markAsCanceled() {
     status = AppointmentStatus.CANCELLED;
   }
 
   /**
    * Method to conclude an appointment.
    */
-  public void complete() {
+  public void markAsCompleted() {
     status = AppointmentStatus.COMPLETED;
+  }
+
+  public LocalDateTime getAppointmentDate() {
+    return appointmentDate;
   }
 }
