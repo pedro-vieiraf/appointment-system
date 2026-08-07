@@ -15,6 +15,9 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Appointments Entity.
+ */
 @Entity
 @Table(name = "appointments")
 public class Appointment {
@@ -60,9 +63,15 @@ public class Appointment {
   @JoinColumn(name = "user_id")
   private User user;
 
+  /**
+   * Empty constructor for JPA.
+   */
   public Appointment() {
   }
 
+  /**
+   * Standard constructor for appointments.
+   */
   public Appointment(String title, LocalDateTime startAt, LocalDateTime endAt,
       AppointmentStatus status, User user) {
     this.title = title;
@@ -72,10 +81,16 @@ public class Appointment {
     this.user = user;
   }
 
+  /**
+   * Method to cancel an appointment.
+   */
   public void cancel() {
     status = AppointmentStatus.CANCELLED;
   }
 
+  /**
+   * Method to conclude an appointment.
+   */
   public void complete() {
     status = AppointmentStatus.COMPLETED;
   }
