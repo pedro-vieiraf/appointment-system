@@ -27,12 +27,10 @@ public class GlobalExceptionHandler {
       EmailAlreadyExistsException exception,
       HttpServletRequest request
   ) {
-    return new ErrorResponse(
-        LocalDateTime.now(),
-        HttpStatus.CONFLICT.value(),
-        HttpStatus.CONFLICT.getReasonPhrase(),
+    return createErrorResponse(
+        HttpStatus.CONFLICT,
         exception.getMessage(),
-        request.getRequestURI()
+        request
     );
   }
 
@@ -45,12 +43,10 @@ public class GlobalExceptionHandler {
       EmailNotFoundException exception,
       HttpServletRequest request
   ) {
-    return new ErrorResponse(
-        LocalDateTime.now(),
-        HttpStatus.CONFLICT.value(),
-        HttpStatus.CONFLICT.getReasonPhrase(),
+    return createErrorResponse(
+        HttpStatus.NOT_FOUND,
         exception.getMessage(),
-        request.getRequestURI()
+        request
     );
   }
 
@@ -63,12 +59,10 @@ public class GlobalExceptionHandler {
       InvalidCredentialsException exception,
       HttpServletRequest request
   ) {
-    return new ErrorResponse(
-        LocalDateTime.now(),
-        HttpStatus.CONFLICT.value(),
-        HttpStatus.CONFLICT.getReasonPhrase(),
+    return createErrorResponse(
+        HttpStatus.UNAUTHORIZED,
         exception.getMessage(),
-        request.getRequestURI()
+        request
     );
   }
 
@@ -86,12 +80,10 @@ public class GlobalExceptionHandler {
         .getFieldError()
         .getDefaultMessage();
 
-    return new ErrorResponse(
-        LocalDateTime.now(),
-        HttpStatus.BAD_REQUEST.value(),
-        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+    return createErrorResponse(
+        HttpStatus.BAD_REQUEST,
         message,
-        request.getRequestURI()
+        request
     );
   }
 
@@ -104,11 +96,39 @@ public class GlobalExceptionHandler {
       HttpMessageNotReadableException exception,
       HttpServletRequest request
   ) {
+    return createErrorResponse(
+        HttpStatus.BAD_REQUEST,
+        "Malformed JSON request.",
+        request
+    );
+  }
+
+  /**
+   * Exception handler for BusinessRuleException.
+   */
+  @ExceptionHandler(BusinessRuleException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleBusinessRuleException(
+      BusinessRuleException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.CONFLICT,
+        exception.getMessage(),
+        request
+    );
+  }
+
+  private ErrorResponse createErrorResponse(
+      HttpStatus status,
+      String message,
+      HttpServletRequest request
+  ) {
     return new ErrorResponse(
         LocalDateTime.now(),
-        HttpStatus.BAD_REQUEST.value(),
-        HttpStatus.BAD_REQUEST.getReasonPhrase(),
-        "Malformed JSON request.",
+        status.value(),
+        status.getReasonPhrase(),
+        message,
         request.getRequestURI()
     );
   }
