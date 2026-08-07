@@ -125,6 +125,7 @@ class AppointmentTest {
           createAppointment();
 
       // Act
+      appointment.markAsConfirmed();
       appointment.markAsCanceled();
 
       // Assert
@@ -142,6 +143,7 @@ class AppointmentTest {
           createAppointment();
 
       // Act
+      appointment.markAsConfirmed();
       appointment.markAsCompleted();
 
       // Assert
