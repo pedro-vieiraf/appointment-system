@@ -77,6 +77,7 @@ public class Appointment {
   public Appointment(
       User user,
       String title,
+      String description,
       LocalDateTime appointmentDate
   ) {
     if (title == null || title.isBlank()) {
@@ -89,8 +90,25 @@ public class Appointment {
 
     this.user = user;
     this.title = title;
+    this.description = description;
     this.appointmentDate = appointmentDate;
     this.status = AppointmentStatus.PENDING;
+  }
+
+  /**
+   * Constructor for optional description.
+   */
+  public Appointment(
+      User user,
+      String title,
+      LocalDateTime appointmentDate
+  ) {
+    this(
+        user,
+        title,
+        "No description provided",
+        appointmentDate
+    );
   }
 
   /**
