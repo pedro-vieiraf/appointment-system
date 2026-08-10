@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -224,6 +225,52 @@ class AppointmentServiceTest {
 
       verify(appointmentRepository, never())
           .save(any());
+    }
+  }
+
+  @Nested
+  @DisplayName("Retrieve Appointments")
+  class RetrieveAppointmentsTests {
+
+    @Test
+    @DisplayName("Get all appointments successfully")
+    void getAllAppointmentsSuccessfully() {
+      // Assert
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+      when(appointmentRepository.findAllByUser(user))
+          .thenReturn(appointments);
+
+      // Act
+      List<Appointment> response = appointmentService.getAll(user);
+
+      // Assert
+      assertEquals(2, response.size());
+      assertEquals(appointments, response);
+
+      verify(appointmentRepository).findAllByUser(user);
     }
   }
 }

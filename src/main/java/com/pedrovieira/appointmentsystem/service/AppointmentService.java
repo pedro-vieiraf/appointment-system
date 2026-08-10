@@ -52,7 +52,7 @@ public class AppointmentService {
     return appointmentRepository.save(appointment);
   }
 
-  public List<Appointment> findAll() {
-    return null;
+  public List<Appointment> getAll(User user) {
+    return appointmentRepository.findAllByUser(user);
   }
 }
