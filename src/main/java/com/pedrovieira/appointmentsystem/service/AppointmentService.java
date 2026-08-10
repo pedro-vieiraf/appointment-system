@@ -7,6 +7,7 @@ import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -49,5 +50,9 @@ public class AppointmentService {
         );
 
     return appointmentRepository.save(appointment);
+  }
+
+  public List<Appointment> findAll() {
+    return null;
   }
 }
