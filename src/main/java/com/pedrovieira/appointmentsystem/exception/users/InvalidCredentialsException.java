@@ -1,4 +1,4 @@
-package com.pedrovieira.appointmentsystem.exception.user;
+package com.pedrovieira.appointmentsystem.exception.users;
 
 /**
  * Invalid Credentials Exception.

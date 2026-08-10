@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.pedrovieira.appointmentsystem.dto.request.RegisterRequest;
 import com.pedrovieira.appointmentsystem.entity.User;
-import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

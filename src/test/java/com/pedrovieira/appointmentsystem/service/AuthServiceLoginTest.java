@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import com.pedrovieira.appointmentsystem.dto.request.LoginRequest;
 import com.pedrovieira.appointmentsystem.dto.response.LoginResponse;
 import com.pedrovieira.appointmentsystem.entity.User;
-import com.pedrovieira.appointmentsystem.exception.user.InvalidCredentialsException;
+import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.security.JwtService;
 import java.util.Optional;
