@@ -54,10 +54,16 @@ public class AppointmentService {
     return appointmentRepository.save(appointment);
   }
 
+  /**
+   * GetAll Appointments by User.
+   */
   public List<Appointment> getAll(User user) {
     return appointmentRepository.findAllByUser(user);
   }
 
+  /**
+   * Get Appointments by ID and User.
+   */
   public Optional<Appointment> getById(User user, Long id) {
     Optional<Appointment> appointment = appointmentRepository.findByIdAndUser(user, id);
 
