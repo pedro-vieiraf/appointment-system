@@ -55,4 +55,8 @@ public class AppointmentService {
   public List<Appointment> getAll(User user) {
     return appointmentRepository.findAllByUser(user);
   }
+
+  public Appointment getById(User user, Long id) {
+    return appointmentRepository.findByIdAndUser(user, id);
+  }
 }

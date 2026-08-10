@@ -272,5 +272,36 @@ class AppointmentServiceTest {
 
       verify(appointmentRepository).findAllByUser(user);
     }
+
+    @Test
+    @DisplayName("Get appointment by ID")
+    void getAppointmentByIdSuccessfully() {
+      // Assert
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment1.setId(1L);
+
+      when(appointmentRepository.findByIdAndUser(user, appointment1.getId()))
+          .thenReturn(appointment1);
+
+      // Act
+      Appointment response = appointmentService.getById(user, appointment1.getId());
+
+      // Assert
+      assertEquals(appointment1, response);
+
+      verify(appointmentRepository).findByIdAndUser(user, appointment1.getId());
+    }
   }
 }
