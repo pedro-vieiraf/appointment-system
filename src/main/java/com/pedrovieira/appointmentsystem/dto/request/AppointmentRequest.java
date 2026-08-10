@@ -23,6 +23,9 @@ public record AppointmentRequest(
 
 ) {
 
+  /**
+   * From DTO to Entity.
+   */
   public Appointment toEntity(User user) {
     return new Appointment(
         user,

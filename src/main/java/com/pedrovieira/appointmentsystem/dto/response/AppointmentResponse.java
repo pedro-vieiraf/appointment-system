@@ -15,6 +15,9 @@ public record AppointmentResponse(
     AppointmentStatus status
 ) {
 
+  /**
+   * From appointment to DTO.
+   */
   public static AppointmentResponse fromAppointment(
       Appointment appointment
   ) {
