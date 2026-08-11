@@ -85,14 +85,7 @@ public class AppointmentService {
       Long id,
       UpdateAppointmentRequest request
   ) {
-    Optional<Appointment> foundAppointment =
-        appointmentRepository.findByIdAndUser(user, id);
-
-    if (foundAppointment.isEmpty()) {
-      throw new AppointmentNotFoundException();
-    }
-
-    Appointment appointment = foundAppointment.get();
+    Appointment appointment = getById(user, id);
 
     if (request.appointmentDate() != null
         && request.appointmentDate().isBefore(LocalDateTime.now())) {
@@ -103,9 +96,10 @@ public class AppointmentService {
     }
 
     if (request.appointmentDate() != null
-        && appointmentRepository.existsByUserAndAppointmentDate(
+        && appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
         user,
-        request.appointmentDate()
+        request.appointmentDate(),
+        id
     )) {
 
       throw new AppointmentConflictException(
@@ -128,6 +122,9 @@ public class AppointmentService {
     return appointmentRepository.save(appointment);
   }
 
+  /**
+   * Delete Appointment.
+   */
   public void delete(User user, Long id) {
     Appointment appointment = getById(user, id);
 

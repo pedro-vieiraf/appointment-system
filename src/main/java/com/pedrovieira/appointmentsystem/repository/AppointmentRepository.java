@@ -28,4 +28,13 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
    * Get by ID by user.
    */
   Optional<Appointment> findByIdAndUser(User user, Long id);
+
+  /**
+   *
+   */
+  boolean existsByUserAndAppointmentDateAndIdNot(
+      User user,
+      LocalDateTime appointmentDate,
+      Long id
+  );
 }

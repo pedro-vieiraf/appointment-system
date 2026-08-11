@@ -828,9 +828,10 @@ class AppointmentServiceTest {
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
 
-      when(appointmentRepository.existsByUserAndAppointmentDate(
+      when(appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
           user,
-          conflictingDate
+          request.appointmentDate(),
+          appointment.getId()
       )).thenReturn(true);
 
       // Act + Assert
@@ -850,7 +851,8 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .existsByUserAndAppointmentDate(user, conflictingDate);
+          .existsByUserAndAppointmentDateAndIdNot(user, request.appointmentDate(),
+              appointment.getId());
 
       verify(appointmentRepository, never())
           .save(any(Appointment.class));
@@ -911,6 +913,77 @@ class AppointmentServiceTest {
 
       verify(appointmentRepository, never())
           .save(any(Appointment.class));
+    }
+
+    @Test
+    @DisplayName("Should update appointment when new date is the same as its current date")
+    void shouldUpdateAppointmentWhenNewDateIsTheSameAsItsCurrentDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime appointmentDate =
+          LocalDateTime.now().plusDays(1).withNano(0);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          appointmentDate
+      );
+
+      appointment.setId(1L);
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              "Updated appointment",
+              null,
+              appointmentDate
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      when(
+          appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
+              user,
+              appointmentDate,
+              appointment.getId()
+          )
+      ).thenReturn(false);
+
+      when(appointmentRepository.save(appointment))
+          .thenReturn(appointment);
+
+      // Act
+      Appointment response = appointmentService.update(
+          user,
+          appointment.getId(),
+          request
+      );
+
+      // Assert
+      assertEquals("Updated appointment", response.getTitle());
+      assertEquals("Annual checkup", response.getDescription());
+      assertEquals(appointmentDate, response.getAppointmentDate());
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointment.getId());
+
+      verify(appointmentRepository)
+          .existsByUserAndAppointmentDateAndIdNot(
+              user,
+              appointmentDate,
+              appointment.getId()
+          );
+
+      verify(appointmentRepository)
+          .save(appointment);
     }
   }
 
