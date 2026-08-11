@@ -5,6 +5,8 @@ import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import java.time.Clock;
@@ -83,11 +85,33 @@ public class AppointmentService {
       Long id,
       UpdateAppointmentRequest request
   ) {
-    Optional<Appointment> foundAppointment = appointmentRepository.findByIdAndUser(user, id);
+    Optional<Appointment> foundAppointment =
+        appointmentRepository.findByIdAndUser(user, id);
+
     if (foundAppointment.isEmpty()) {
       throw new AppointmentNotFoundException();
     }
+
     Appointment appointment = foundAppointment.get();
+
+    if (request.appointmentDate() != null
+        && request.appointmentDate().isBefore(LocalDateTime.now())) {
+
+      throw new AppointmentDateInPastException(
+          "Appointment date must be in the future."
+      );
+    }
+
+    if (request.appointmentDate() != null
+        && appointmentRepository.existsByUserAndAppointmentDate(
+        user,
+        request.appointmentDate()
+    )) {
+
+      throw new AppointmentConflictException(
+          "Appointment date conflicts with another appointment."
+      );
+    }
 
     if (request.title() != null) {
       appointment.setTitle(request.title());

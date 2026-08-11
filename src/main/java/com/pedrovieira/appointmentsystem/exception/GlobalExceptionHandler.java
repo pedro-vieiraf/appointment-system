@@ -1,5 +1,7 @@
 package com.pedrovieira.appointmentsystem.exception;
 
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
 import com.pedrovieira.appointmentsystem.exception.users.EmailNotFoundException;
@@ -131,6 +133,38 @@ public class GlobalExceptionHandler {
   ) {
     return createErrorResponse(
         HttpStatus.NOT_FOUND,
+        exception.getMessage(),
+        request
+    );
+  }
+
+  /**
+   * Exception handler for AppointmentConflict.
+   */
+  @ExceptionHandler(AppointmentConflictException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleAppointmentConflict(
+      AppointmentConflictException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.CONFLICT,
+        exception.getMessage(),
+        request
+    );
+  }
+
+  /**
+   * Exception handler for AppointmentDateInPast.
+   */
+  @ExceptionHandler(AppointmentDateInPastException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleAppointmentDateInPast(
+      AppointmentDateInPastException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.BAD_REQUEST,
         exception.getMessage(),
         request
     );

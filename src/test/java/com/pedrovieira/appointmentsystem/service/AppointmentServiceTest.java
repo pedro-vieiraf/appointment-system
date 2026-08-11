@@ -14,6 +14,8 @@ import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import java.time.Clock;
@@ -739,6 +741,176 @@ class AppointmentServiceTest {
 
       verify(appointmentRepository, never())
           .save(any());
+    }
+
+    @Test
+    @DisplayName("Should save the updated appointment")
+    void shouldSaveTheUpdatedAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Old title",
+          "Old description",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              "New title",
+              "New description",
+              appointment.getAppointmentDate()
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      when(appointmentRepository.save(appointment))
+          .thenReturn(appointment);
+
+      // Act
+      Appointment response = appointmentService.update(
+          user,
+          appointment.getId(),
+          request
+      );
+
+      // Assert
+      assertEquals("New title", response.getTitle());
+      assertEquals("New description", response.getDescription());
+
+      verify(appointmentRepository).save(appointment);
+    }
+
+    @Test
+    @DisplayName("Should reject appointment when the new date conflicts")
+    void shouldRejectAppointmentWhenNewDateConflicts() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime oldDate =
+          LocalDateTime.now().plusDays(1);
+
+      LocalDateTime conflictingDate =
+          LocalDateTime.now().plusDays(2);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          oldDate
+      );
+
+      appointment.setId(1L);
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              null,
+              null,
+              conflictingDate
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      when(appointmentRepository.existsByUserAndAppointmentDate(
+          user,
+          conflictingDate
+      )).thenReturn(true);
+
+      // Act + Assert
+      AppointmentConflictException exception =
+          assertThrows(
+              AppointmentConflictException.class,
+              () -> appointmentService.update(
+                  user,
+                  appointment.getId(),
+                  request
+              )
+          );
+
+      assertEquals(
+          "Appointment date conflicts with another appointment.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .existsByUserAndAppointmentDate(user, conflictingDate);
+
+      verify(appointmentRepository, never())
+          .save(any(Appointment.class));
+    }
+
+    @Test
+    @DisplayName("Should reject appointment when the new date is in the past")
+    void shouldRejectAppointmentWhenNewDateIsInThePast() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime currentDate =
+          LocalDateTime.now().plusDays(1);
+
+      LocalDateTime pastDate =
+          LocalDateTime.now().minusDays(1);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          currentDate
+      );
+
+      appointment.setId(1L);
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              null,
+              null,
+              pastDate
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      // Act + Assert
+      AppointmentDateInPastException exception =
+          assertThrows(
+              AppointmentDateInPastException.class,
+              () -> appointmentService.update(
+                  user,
+                  appointment.getId(),
+                  request
+              )
+          );
+
+      assertEquals(
+          "Appointment date must be in the future.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository, never())
+          .save(any(Appointment.class));
     }
   }
 }
