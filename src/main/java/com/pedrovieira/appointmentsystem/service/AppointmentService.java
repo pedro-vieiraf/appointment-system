@@ -4,9 +4,12 @@ import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -49,5 +52,27 @@ public class AppointmentService {
         );
 
     return appointmentRepository.save(appointment);
+  }
+
+  /**
+   * GetAll Appointments by User.
+   */
+  public List<Appointment> getAll(User user) {
+    return appointmentRepository.findAllByUser(user);
+  }
+
+  /**
+   * Get Appointments by ID and User.
+   */
+  public Optional<Appointment> getById(User user, Long id) {
+    Optional<Appointment> appointment = appointmentRepository.findByIdAndUser(user, id);
+
+    if (appointment.isEmpty()) {
+      throw new AppointmentNotFoundException(
+          "Appointment not found."
+      );
+    }
+
+    return appointment;
   }
 }

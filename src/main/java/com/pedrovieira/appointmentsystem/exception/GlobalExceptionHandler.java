@@ -1,8 +1,9 @@
 package com.pedrovieira.appointmentsystem.exception;
 
-import com.pedrovieira.appointmentsystem.exception.user.EmailAlreadyExistsException;
-import com.pedrovieira.appointmentsystem.exception.user.EmailNotFoundException;
-import com.pedrovieira.appointmentsystem.exception.user.InvalidCredentialsException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.exception.users.EmailNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import org.springframework.http.HttpStatus;
@@ -114,6 +115,22 @@ public class GlobalExceptionHandler {
   ) {
     return createErrorResponse(
         HttpStatus.CONFLICT,
+        exception.getMessage(),
+        request
+    );
+  }
+
+  /**
+   * Exception handler for AppointmentNotFound.
+   */
+  @ExceptionHandler(AppointmentNotFoundException.class)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  public ErrorResponse handleAppointmentNotFound(
+      AppointmentNotFoundException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.NOT_FOUND,
         exception.getMessage(),
         request
     );

@@ -13,11 +13,14 @@ import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -224,6 +227,203 @@ class AppointmentServiceTest {
 
       verify(appointmentRepository, never())
           .save(any());
+    }
+  }
+
+  @Nested
+  @DisplayName("Get All Appointments")
+  class GetAllAppointmentsTests {
+
+    @Test
+    @DisplayName("Get all appointments successfully")
+    void getAllAppointmentsSuccessfully() {
+      // Assert
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+      when(appointmentRepository.findAllByUser(user))
+          .thenReturn(appointments);
+
+      // Act
+      List<Appointment> response = appointmentService.getAll(user);
+
+      // Assert
+      assertEquals(2, response.size());
+      assertEquals(appointments, response);
+
+      verify(appointmentRepository).findAllByUser(user);
+    }
+
+    @Test
+    @DisplayName("Get empty list when user has no appointments")
+    void getAllAppointmentsWhenUserHasNoAppointments() {
+      // Assert
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+      List<Appointment> appointments = List.of();
+
+      when(appointmentRepository.findAllByUser(user))
+          .thenReturn(appointments);
+
+      // Act
+      List<Appointment> response = appointmentService.getAll(user);
+
+      // Assert
+      assertEquals(0, response.size());
+
+      verify(appointmentRepository).findAllByUser(user);
+    }
+
+  }
+
+  @Nested
+  @DisplayName("Get Appointments By ID")
+  class GetAppointmentsByIdTests {
+
+    @Test
+    @DisplayName("Get appointment by ID")
+    void getAppointmentByIdSuccessfully() {
+      // Assert
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment1.setId(1L);
+
+      when(appointmentRepository.findByIdAndUser(user, appointment1.getId()))
+          .thenReturn(Optional.of(appointment1));
+
+      // Act
+      Optional<Appointment> response = appointmentService.getById(user, appointment1.getId());
+
+      // Assert
+      assertEquals(Optional.of(appointment1), response);
+
+      verify(appointmentRepository).findByIdAndUser(user, appointment1.getId());
+    }
+
+    @Test
+    @DisplayName("Should not get appointment when appointment is not found")
+    void shouldNotGetAppointmentWhenAppointmentIsNotFound() {
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment1.setId(1L);
+
+      when(appointmentRepository.findByIdAndUser(user, appointment1.getId()))
+          .thenReturn(Optional.empty());
+
+      // Act + Assert
+      AppointmentNotFoundException exception =
+          assertThrows(
+              AppointmentNotFoundException.class,
+              () -> appointmentService.getById(user, appointment1.getId())
+          );
+
+      assertEquals(
+          "Appointment not found.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointment1.getId());
+    }
+
+    @Test
+    @DisplayName("Should not get appointment belonging to another user")
+    void shouldNotGetAppointmentBelongingToAnotherUser() {
+      // Arrange
+      User authenticatedUser = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      User appointmentOwner = new User(
+          "Jane Doe",
+          "jane@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          appointmentOwner,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              authenticatedUser,
+              appointment.getId()
+          )
+      ).thenReturn(Optional.empty());
+
+      // Act + Assert
+      AppointmentNotFoundException exception =
+          assertThrows(
+              AppointmentNotFoundException.class,
+              () -> appointmentService.getById(
+                  authenticatedUser,
+                  appointment.getId()
+              )
+          );
+
+      assertEquals(
+          "Appointment not found.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(
+              authenticatedUser,
+              appointment.getId()
+          );
     }
   }
 }

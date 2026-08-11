@@ -6,10 +6,14 @@ import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,5 +44,37 @@ public class AppointmentController {
     return ResponseEntity
         .status(HttpStatus.CREATED)
         .body(AppointmentResponse.fromAppointment(appointment));
+  }
+
+  /**
+   * GET Route that will get the list of appointment.
+   */
+  @GetMapping
+  public ResponseEntity<List<AppointmentResponse>> getAll(Authentication authentication) {
+    User user = (User) authentication.getPrincipal();
+
+    List<Appointment> appointments = appointmentService.getAll(user);
+
+    return ResponseEntity.ok(
+        appointments.stream()
+            .map(AppointmentResponse::fromAppointment)
+            .toList()
+    );
+  }
+
+  /**
+   * GET by ID Route that will get the specific appointment.
+   */
+  @GetMapping("/{id}")
+  public ResponseEntity<AppointmentResponse> getById(
+      Authentication authentication,
+      @PathVariable long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+    Optional<Appointment> appointment = appointmentService.getById(user, id);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment.get())
+    );
   }
 }
