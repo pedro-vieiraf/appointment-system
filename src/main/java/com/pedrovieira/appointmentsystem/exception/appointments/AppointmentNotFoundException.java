@@ -8,7 +8,7 @@ public class AppointmentNotFoundException extends RuntimeException {
   /**
    * Message for appointment not found.
    */
-  public AppointmentNotFoundException(String message) {
-    super(message);
+  public AppointmentNotFoundException() {
+    super("Appointment not found.");
   }
 }

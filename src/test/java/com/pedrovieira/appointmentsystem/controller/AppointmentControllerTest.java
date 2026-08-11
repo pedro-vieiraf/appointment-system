@@ -445,7 +445,7 @@ public class AppointmentControllerTest {
       Long appointmentId = 1L;
 
       when(appointmentService.getById(user, appointmentId))
-          .thenThrow(new AppointmentNotFoundException("Appointment not found."));
+          .thenThrow(new AppointmentNotFoundException());
 
       // Act + Assert
       mockMvc.perform(

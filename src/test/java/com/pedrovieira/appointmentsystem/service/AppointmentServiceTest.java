@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
@@ -432,9 +433,312 @@ class AppointmentServiceTest {
   class UpdateAppointmentsTests {
 
     @Test
-    @DisplayName("shouldUpdateAppointmentSuccessfully")
-    void updateAppointmentSuccessfully() {
+    @DisplayName("Should update only the title")
+    void shouldUpdateOnlyTheProvidedFields() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
 
+      LocalDateTime originalDate =
+          LocalDateTime.now()
+              .plusDays(1)
+              .withNano(0);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          originalDate
+      );
+
+      appointment.setId(1L);
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              "Updated appointment",
+              null,
+              null
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      when(appointmentRepository.save(appointment))
+          .thenReturn(appointment);
+
+      // Act
+      Appointment response =
+          appointmentService.update(
+              user,
+              appointment.getId(),
+              request
+          );
+
+      // Assert
+      assertEquals(
+          "Updated appointment",
+          response.getTitle()
+      );
+
+      assertEquals(
+          "Annual checkup",
+          response.getDescription()
+      );
+
+      assertEquals(
+          originalDate,
+          response.getAppointmentDate()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointment.getId());
+
+      verify(appointmentRepository)
+          .save(appointment);
+    }
+
+    @Test
+    @DisplayName("Should update only the description")
+    void shouldUpdateOnlyTheDescription() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime originalDate =
+          LocalDateTime.now()
+              .plusDays(1)
+              .withNano(0);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          originalDate
+      );
+
+      appointment.setId(1L);
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              null,
+              "Updated description",
+              null
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      when(appointmentRepository.save(appointment))
+          .thenReturn(appointment);
+
+      // Act
+      Appointment response =
+          appointmentService.update(
+              user,
+              appointment.getId(),
+              request
+          );
+
+      // Assert
+      assertEquals(
+          "Medical appointment",
+          response.getTitle()
+      );
+
+      assertEquals(
+          "Updated description",
+          response.getDescription()
+      );
+
+      assertEquals(
+          originalDate,
+          response.getAppointmentDate()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointment.getId());
+
+      verify(appointmentRepository)
+          .save(appointment);
+    }
+
+    @Test
+    @DisplayName("Should update only the appointment date")
+    void shouldUpdateOnlyTheAppointmentDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime originalDate =
+          LocalDateTime.now()
+              .plusDays(1)
+              .withNano(0);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          originalDate
+      );
+
+      appointment.setId(1L);
+
+      LocalDateTime updatedDate =
+          LocalDateTime.now()
+              .plusDays(2)
+              .withNano(0);
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              null,
+              null,
+              updatedDate
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      when(appointmentRepository.save(appointment))
+          .thenReturn(appointment);
+
+      // Act
+      Appointment response =
+          appointmentService.update(
+              user,
+              appointment.getId(),
+              request
+          );
+
+      // Assert
+      assertEquals(
+          "Medical appointment",
+          response.getTitle()
+      );
+
+      assertEquals(
+          "Annual checkup",
+          response.getDescription()
+      );
+
+      assertEquals(
+          updatedDate,
+          response.getAppointmentDate()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointment.getId());
+
+      verify(appointmentRepository)
+          .save(appointment);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when appointment is not found")
+    void shouldThrowExceptionWhenAppointmentIsNotFound() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              "Updated appointment",
+              null,
+              null
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointmentId
+      )).thenReturn(Optional.empty());
+
+      // Act + Assert
+      AppointmentNotFoundException exception =
+          assertThrows(
+              AppointmentNotFoundException.class,
+              () -> appointmentService.update(
+                  user,
+                  appointmentId,
+                  request
+              )
+          );
+
+      assertEquals(
+          "Appointment not found.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointmentId);
+
+      verify(appointmentRepository, never())
+          .save(any());
+    }
+
+    @Test
+    @DisplayName("Should not update appointment belonging to another user")
+    void shouldNotUpdateAppointmentBelongingToAnotherUser() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      UpdateAppointmentRequest request =
+          new UpdateAppointmentRequest(
+              "Updated appointment",
+              null,
+              null
+          );
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointmentId
+      )).thenReturn(Optional.empty());
+
+      // Act + Assert
+      AppointmentNotFoundException exception =
+          assertThrows(
+              AppointmentNotFoundException.class,
+              () -> appointmentService.update(
+                  user,
+                  appointmentId,
+                  request
+              )
+          );
+
+      assertEquals(
+          "Appointment not found.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointmentId);
+
+      verify(appointmentRepository, never())
+          .save(any());
     }
   }
 }

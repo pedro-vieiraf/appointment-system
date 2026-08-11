@@ -1,6 +1,7 @@
 package com.pedrovieira.appointmentsystem.service;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
@@ -68,11 +69,38 @@ public class AppointmentService {
     Optional<Appointment> appointment = appointmentRepository.findByIdAndUser(user, id);
 
     if (appointment.isEmpty()) {
-      throw new AppointmentNotFoundException(
-          "Appointment not found."
-      );
+      throw new AppointmentNotFoundException();
     }
 
     return appointment;
+  }
+
+  /**
+   * Update Appointment.
+   */
+  public Appointment update(
+      User user,
+      Long id,
+      UpdateAppointmentRequest request
+  ) {
+    Optional<Appointment> foundAppointment = appointmentRepository.findByIdAndUser(user, id);
+    if (foundAppointment.isEmpty()) {
+      throw new AppointmentNotFoundException();
+    }
+    Appointment appointment = foundAppointment.get();
+
+    if (request.title() != null) {
+      appointment.setTitle(request.title());
+    }
+
+    if (request.description() != null) {
+      appointment.setDescription(request.description());
+    }
+
+    if (request.appointmentDate() != null) {
+      appointment.setAppointmentDate(request.appointmentDate());
+    }
+
+    return appointmentRepository.save(appointment);
   }
 }
