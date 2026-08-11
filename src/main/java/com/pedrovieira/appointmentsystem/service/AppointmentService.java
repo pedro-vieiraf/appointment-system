@@ -127,4 +127,10 @@ public class AppointmentService {
 
     return appointmentRepository.save(appointment);
   }
+
+  public void delete(User user, Long id) {
+    Appointment appointment = getById(user, id);
+
+    appointmentRepository.delete(appointment);
+  }
 }

@@ -920,6 +920,111 @@ class AppointmentServiceTest {
 
     @Test
     @DisplayName("Should delete appointment successfully")
-    void shouldDeleteAppointmentSuccessfully() {}
+    void shouldDeleteAppointmentSuccessfully() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      when(appointmentRepository.findByIdAndUser(
+          user,
+          appointment.getId()
+      )).thenReturn(Optional.of(appointment));
+
+      // Act
+      appointmentService.delete(user, appointment.getId());
+
+      // Assert
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointment.getId());
+
+      verify(appointmentRepository)
+          .delete(appointment);
+    }
+
+    @Test
+    @DisplayName("Should return 404 exception if appointment is not found")
+    void shouldReturn404ExceptionIfAppointmentIsNotFound() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      when(appointmentRepository.findByIdAndUser(user, appointmentId))
+          .thenReturn(Optional.empty());
+
+      // Act + Assert
+      AppointmentNotFoundException exception =
+          assertThrows(
+              AppointmentNotFoundException.class,
+              () -> appointmentService.delete(
+                  user,
+                  appointmentId
+              )
+          );
+
+      assertEquals(
+          "Appointment not found.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointmentId);
+
+      verify(appointmentRepository, never())
+          .delete(any(Appointment.class));
+    }
+
+    @Test
+    @DisplayName("Should not delete appointment belonging to another user")
+    void shouldNotDeleteAppointmentBelongingToAnotherUser() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      when(appointmentRepository.findByIdAndUser(user, appointmentId))
+          .thenReturn(Optional.empty());
+
+      // Act + Assert
+      AppointmentNotFoundException exception =
+          assertThrows(
+              AppointmentNotFoundException.class,
+              () -> appointmentService.delete(
+                  user,
+                  appointmentId
+              )
+          );
+
+      assertEquals(
+          "Appointment not found.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(user, appointmentId);
+
+      verify(appointmentRepository, never())
+          .delete(any(Appointment.class));
+    }
   }
 }
