@@ -6,7 +6,7 @@ package com.pedrovieira.appointmentsystem.exception.appointments;
 public class AppointmentConflictException extends RuntimeException {
 
   /**
-   * Method of exception that will define the error message
+   * Method of exception that will define the error message.
    */
   public AppointmentConflictException(String message) {
     super(message);
