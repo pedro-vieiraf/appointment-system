@@ -2,6 +2,7 @@ package com.pedrovieira.appointmentsystem.dto.request;
 
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.validation.SizeCheck;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,14 +18,16 @@ public record AppointmentRequest(
     @Size(
         min = 3,
         max = 50,
-        message = "Title must contain between 3 and 50 characters."
+        message = "Title must contain between 3 and 50 characters.",
+        groups = SizeCheck.class
     )
     String title,
 
     @Size(
         min = 3,
         max = 500,
-        message = "Description must contain between 3 and 500 characters."
+        message = "Description must contain between 3 and 500 characters.",
+        groups = SizeCheck.class
     )
     String description,
 
