@@ -1,18 +1,21 @@
 package com.pedrovieira.appointmentsystem.controller;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.dto.response.AppointmentResponse;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
+import com.pedrovieira.appointmentsystem.validation.OrderedValidation;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,7 +38,7 @@ public class AppointmentController {
   @PostMapping
   public ResponseEntity<AppointmentResponse> create(
       Authentication authentication,
-      @Valid
+      @Validated(OrderedValidation.class)
       @RequestBody AppointmentRequest request
   ) {
     User user = (User) authentication.getPrincipal();
@@ -71,10 +74,30 @@ public class AppointmentController {
       @PathVariable long id
   ) {
     User user = (User) authentication.getPrincipal();
-    Optional<Appointment> appointment = appointmentService.getById(user, id);
+
+    Appointment appointment = appointmentService.getById(user, id);
 
     return ResponseEntity.ok(
-        AppointmentResponse.fromAppointment(appointment.get())
+        AppointmentResponse.fromAppointment(appointment)
+    );
+  }
+
+  /**
+   * PATCH Route that will update appointment.
+   */
+  @PatchMapping("/{id}")
+  public ResponseEntity<AppointmentResponse> update(
+      Authentication authentication,
+      @PathVariable long id,
+      @Valid @RequestBody UpdateAppointmentRequest request
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    Appointment appointment =
+        appointmentService.update(user, id, request);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment)
     );
   }
 }

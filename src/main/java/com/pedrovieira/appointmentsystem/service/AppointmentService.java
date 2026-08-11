@@ -65,14 +65,14 @@ public class AppointmentService {
   /**
    * Get Appointments by ID and User.
    */
-  public Optional<Appointment> getById(User user, Long id) {
+  public Appointment getById(User user, Long id) {
     Optional<Appointment> appointment = appointmentRepository.findByIdAndUser(user, id);
 
     if (appointment.isEmpty()) {
       throw new AppointmentNotFoundException();
     }
 
-    return appointment;
+    return appointment.get();
   }
 
   /**

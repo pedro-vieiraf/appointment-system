@@ -328,10 +328,10 @@ class AppointmentServiceTest {
           .thenReturn(Optional.of(appointment1));
 
       // Act
-      Optional<Appointment> response = appointmentService.getById(user, appointment1.getId());
+      Appointment response = appointmentService.getById(user, appointment1.getId());
 
       // Assert
-      assertEquals(Optional.of(appointment1), response);
+      assertEquals(appointment1, response);
 
       verify(appointmentRepository).findByIdAndUser(user, appointment1.getId());
     }
