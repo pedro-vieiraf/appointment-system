@@ -336,8 +336,8 @@ class AppointmentServiceTest {
     }
 
     @Test
-    @DisplayName("Should not get appointment belonging to another user")
-    void shouldNotGetAppointmentBelongingToAnotherUser() {
+    @DisplayName("Should not get appointment when appointment is not found")
+    void shouldNotGetAppointmentWhenAppointmentIsNotFound() {
       User user = new User(
           "John Doe",
           "john@email.com",
@@ -370,6 +370,60 @@ class AppointmentServiceTest {
 
       verify(appointmentRepository)
           .findByIdAndUser(user, appointment1.getId());
+    }
+
+    @Test
+    @DisplayName("Should not get appointment belonging to another user")
+    void shouldNotGetAppointmentBelongingToAnotherUser() {
+      // Arrange
+      User authenticatedUser = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      User appointmentOwner = new User(
+          "Jane Doe",
+          "jane@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          appointmentOwner,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              authenticatedUser,
+              appointment.getId()
+          )
+      ).thenReturn(Optional.empty());
+
+      // Act + Assert
+      AppointmentNotFoundException exception =
+          assertThrows(
+              AppointmentNotFoundException.class,
+              () -> appointmentService.getById(
+                  authenticatedUser,
+                  appointment.getId()
+              )
+          );
+
+      assertEquals(
+          "Appointment not found.",
+          exception.getMessage()
+      );
+
+      verify(appointmentRepository)
+          .findByIdAndUser(
+              authenticatedUser,
+              appointment.getId()
+          );
     }
   }
 }

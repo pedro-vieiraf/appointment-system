@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,10 +15,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.security.JwtService;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -221,90 +225,238 @@ public class AppointmentControllerTest {
 
       verifyNoInteractions(appointmentService);
     }
+
+    @Test
+    @DisplayName("Should return error if appointment date is in the past")
+    void shouldReturnErrorIfAppointmentDateIsInThePast() throws Exception {
+      // Arrange
+      AppointmentRequest request = new AppointmentRequest(
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().minusDays(1)
+      );
+
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              post("/appointments")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("Appointment date must be in the future.")
+          );
+
+      verifyNoInteractions(appointmentService);
+    }
+
+    @Test
+    @DisplayName("Should create appointment for authenticated user")
+    void shouldCreateAppointmentForAuthenticatedUser() throws Exception {
+      // Arrange
+      LocalDateTime appointmentDate =
+          LocalDateTime.now()
+              .plusDays(1)
+              .withNano(0);
+
+      AppointmentRequest request = new AppointmentRequest(
+          "Medical appointment",
+          "Annual checkup",
+          appointmentDate
+      );
+
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          appointmentDate
+      );
+
+      when(
+          appointmentService.create(
+              any(User.class),
+              any(AppointmentRequest.class)
+          )
+      ).thenReturn(appointment);
+
+      // Act
+      mockMvc.perform(
+              post("/appointments")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isCreated());
+
+      // Assert
+      verify(appointmentService).create(
+          eq(user),
+          eq(request)
+      );
+    }
   }
 
-  @Test
-  @DisplayName("Should return error if appointment date is in the past")
-  void shouldReturnErrorIfAppointmentDateIsInThePast() throws Exception {
-    // Arrange
-    AppointmentRequest request = new AppointmentRequest(
-        "Medical appointment",
-        "Annual checkup",
-        LocalDateTime.now().minusDays(1)
-    );
+  @Nested
+  @DisplayName("GET All Appointments")
+  class GetAllAppointments {
 
-    User user = new User(
-        "John Doe",
-        "john@email.com",
-        "hashed-password"
-    );
+    @Test
+    @DisplayName("Should get appointments successfully")
+    public void shouldGetAppointmentsSuccessfully() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
 
-    // Act + Assert
-    mockMvc.perform(
-            post("/appointments")
-                .with(user(user))
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonMapper.writeValueAsString(request))
-        )
-        .andExpect(status().isBadRequest())
-        .andExpect(
-            jsonPath("$.message")
-                .value("Appointment date must be in the future.")
-        );
+      Appointment appointment1 = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+      appointment1.setId(1L);
 
-    verifyNoInteractions(appointmentService);
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental checkup",
+          LocalDateTime.now().plusDays(2)
+      );
+      appointment2.setId(2L);
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+
+      when(appointmentService.getAll(user))
+          .thenReturn(appointments);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$").isArray())
+          .andExpect(jsonPath("$.length()").value(2))
+          .andExpect(jsonPath("$[0].id").value(1))
+          .andExpect(jsonPath("$[0].title").value("Medical appointment"))
+          .andExpect(jsonPath("$[0].description").value("Annual checkup"))
+          .andExpect(jsonPath("$[1].id").value(2))
+          .andExpect(jsonPath("$[1].title").value("Dentist"))
+          .andExpect(jsonPath("$[1].description").value("Dental checkup"));
+
+      verify(appointmentService).getAll(user);
+    }
+
+    @Test
+    @DisplayName("Should return an empty list when user has no appointments")
+    void shouldReturnEmptyListWhenUserHasNoAppointments() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      when(appointmentService.getAll(user))
+          .thenReturn(List.of());
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$").isArray())
+          .andExpect(jsonPath("$.length()").value(0));
+
+      verify(appointmentService).getAll(user);
+    }
   }
 
-  @Test
-  @DisplayName("Should create appointment for authenticated user")
-  void shouldCreateAppointmentForAuthenticatedUser() throws Exception {
-    // Arrange
-    LocalDateTime appointmentDate =
-        LocalDateTime.now()
-            .plusDays(1)
-            .withNano(0);
+  @Nested
+  @DisplayName("GET Appointment By ID")
+  class GetAppointmentById {
 
-    AppointmentRequest request = new AppointmentRequest(
-        "Medical appointment",
-        "Annual checkup",
-        appointmentDate
-    );
+    @Test
+    @DisplayName("Should get the appointment by ID successfully")
+    public void shouldGetTheAppointmentByIdSuccessfully() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
 
-    User user = new User(
-        "John Doe",
-        "john@email.com",
-        "hashed-password"
-    );
+      Appointment appointment = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+      appointment.setId(1L);
 
-    Appointment appointment = new Appointment(
-        user,
-        "Medical appointment",
-        "Annual checkup",
-        appointmentDate
-    );
+      when(appointmentService.getById(user, appointment.getId()))
+          .thenReturn(Optional.of(appointment));
 
-    when(
-        appointmentService.create(
-            any(User.class),
-            any(AppointmentRequest.class)
-        )
-    ).thenReturn(appointment);
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments/{id}", appointment.getId())
+                  .with(user(user))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.title").value("Medical appointment"))
+          .andExpect(jsonPath("$.description").value("Annual checkup"));
 
-    // Act
-    mockMvc.perform(
-            post("/appointments")
-                .with(user(user))
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonMapper.writeValueAsString(request))
-        )
-        .andExpect(status().isCreated());
+      verify(appointmentService)
+          .getById(user, appointment.getId());
+    }
 
-    // Assert
-    verify(appointmentService).create(
-        eq(user),
-        eq(request)
-    );
+    @Test
+    @DisplayName("Should return 404 when appointment is not found")
+    void shouldReturnNotFoundWhenAppointmentIsNotFound() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      when(appointmentService.getById(user, appointmentId))
+          .thenThrow(new AppointmentNotFoundException("Appointment not found."));
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments/{id}", appointmentId)
+                  .with(user(user))
+          )
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.message").value("Appointment not found."));
+
+      verify(appointmentService)
+          .getById(user, appointmentId);
+    }
   }
 }
