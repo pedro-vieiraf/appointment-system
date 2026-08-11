@@ -913,4 +913,13 @@ class AppointmentServiceTest {
           .save(any(Appointment.class));
     }
   }
+
+  @Nested
+  @DisplayName("Delete Appointment")
+  class DeleteAppointmentTests {
+
+    @Test
+    @DisplayName("Should delete appointment successfully")
+    void shouldDeleteAppointmentSuccessfully() {}
+  }
 }
