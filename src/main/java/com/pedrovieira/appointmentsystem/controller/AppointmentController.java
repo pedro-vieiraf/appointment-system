@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -83,7 +84,7 @@ public class AppointmentController {
   }
 
   /**
-   * PATCH Route that will update appointment.
+   * PATCH Route to update appointments.
    */
   @PatchMapping("/{id}")
   public ResponseEntity<AppointmentResponse> update(
@@ -99,5 +100,20 @@ public class AppointmentController {
     return ResponseEntity.ok(
         AppointmentResponse.fromAppointment(appointment)
     );
+  }
+
+  /**
+   * DELETE Route to delete appointments.
+   */
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> delete(
+      Authentication authentication,
+      @PathVariable long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    appointmentService.delete(user, id);
+
+    return ResponseEntity.noContent().build();
   }
 }

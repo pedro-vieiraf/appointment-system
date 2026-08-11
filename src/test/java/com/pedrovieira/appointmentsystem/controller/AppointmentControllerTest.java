@@ -2,11 +2,14 @@ package com.pedrovieira.appointmentsystem.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -1071,6 +1074,104 @@ public class AppointmentControllerTest {
           eq(appointmentId),
           any(UpdateAppointmentRequest.class)
       );
+    }
+  }
+
+  @Nested
+  @DisplayName("DELETE Appointment")
+  class DeleteAppointment {
+
+    @Test
+    @DisplayName("Should delete appointment successfully")
+    public void shouldDeleteAppointmentSuccessfully() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      doNothing().when(appointmentService)
+          .delete(user, appointmentId);
+
+      // Act + Assert
+      mockMvc.perform(
+              delete("/appointments/{id}", appointmentId)
+                  .with(user(user))
+                  .with(csrf())
+          )
+          .andExpect(status().isNoContent());
+
+      verify(appointmentService)
+          .delete(user, appointmentId);
+    }
+
+    @Test
+    @DisplayName("Should return 404 if appointment is not found")
+    public void shouldReturn404IfAppointmentIsNotFound() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      doThrow(new AppointmentNotFoundException())
+          .when(appointmentService)
+          .delete(user, appointmentId);
+
+      // Act + Assert
+      mockMvc.perform(
+              delete("/appointments/{id}", appointmentId)
+                  .with(user(user))
+                  .with(csrf())
+          )
+          .andExpect(status().isNotFound())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("Appointment not found.")
+          );
+
+      verify(appointmentService)
+          .delete(user, appointmentId);
+    }
+
+    @Test
+    @DisplayName("Should return 404 if appointment does not belong to user")
+    public void shouldReturn404IfAppointmentDoesNotBelongToUser()
+        throws Exception {
+
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Long appointmentId = 1L;
+
+      doThrow(new AppointmentNotFoundException())
+          .when(appointmentService)
+          .delete(user, appointmentId);
+
+      // Act + Assert
+      mockMvc.perform(
+              delete("/appointments/{id}", appointmentId)
+                  .with(user(user))
+                  .with(csrf())
+          )
+          .andExpect(status().isNotFound())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("Appointment not found.")
+          );
+
+      verify(appointmentService)
+          .delete(user, appointmentId);
     }
   }
 }
