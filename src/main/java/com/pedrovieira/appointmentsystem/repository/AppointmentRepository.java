@@ -30,7 +30,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
   Optional<Appointment> findByIdAndUser(User user, Long id);
 
   /**
-   *
+   * Verify if another appointment exists at the given time.
    */
   boolean existsByUserAndAppointmentDateAndIdNot(
       User user,
