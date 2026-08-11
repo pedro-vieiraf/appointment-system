@@ -426,4 +426,15 @@ class AppointmentServiceTest {
           );
     }
   }
+
+  @Nested
+  @DisplayName("Update Appointments")
+  class UpdateAppointmentsTests {
+
+    @Test
+    @DisplayName("shouldUpdateAppointmentSuccessfully")
+    void updateAppointmentSuccessfully() {
+
+    }
+  }
 }
