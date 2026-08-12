@@ -4,6 +4,9 @@ import com.pedrovieira.appointmentsystem.validation.SizeCheck;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Update password DTO.
+ */
 public record ChangePasswordRequest(
 
     @NotBlank(message = "Password is required.")
