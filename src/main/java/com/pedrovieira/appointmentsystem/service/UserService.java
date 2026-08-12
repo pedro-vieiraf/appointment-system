@@ -1,10 +1,13 @@
 package com.pedrovieira.appointmentsystem.service;
 
+import com.pedrovieira.appointmentsystem.dto.request.ChangePasswordRequest;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateUserRequest;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.exception.users.InvalidPasswordException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -15,9 +18,10 @@ import org.springframework.stereotype.Service;
 public class UserService {
 
   private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
 
   /**
-   * Update Appointment.
+   * Update User.
    */
   public User update(User user, UpdateUserRequest request) {
     if (request.fullName() != null) {
@@ -35,5 +39,27 @@ public class UserService {
     }
 
     return userRepository.save(user);
+  }
+
+  /**
+   * Update password.
+   */
+  public void updatePassword(
+      User user,
+      ChangePasswordRequest request
+  ) {
+    if (!passwordEncoder.matches(
+        request.currentPassword(),
+        user.getPassword()
+    )) {
+      throw new InvalidPasswordException();
+    }
+
+    String encodedPassword =
+        passwordEncoder.encode(request.newPassword());
+
+    user.setPassword(encodedPassword);
+
+    userRepository.save(user);
   }
 }
