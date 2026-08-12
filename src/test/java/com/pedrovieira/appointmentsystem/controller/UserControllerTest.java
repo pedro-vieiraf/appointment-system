@@ -1,5 +1,6 @@
 package com.pedrovieira.appointmentsystem.controller;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -8,12 +9,15 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.pedrovieira.appointmentsystem.dto.request.ChangePasswordRequest;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateUserRequest;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
+import com.pedrovieira.appointmentsystem.exception.users.InvalidPasswordException;
 import com.pedrovieira.appointmentsystem.security.JwtAuthenticationFilter;
 import com.pedrovieira.appointmentsystem.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -356,6 +360,210 @@ public class UserControllerTest {
 
       verify(userService)
           .update(user, request);
+    }
+  }
+
+  @Nested
+  @DisplayName("PATCH Password")
+  class PatchPassword {
+
+    @Test
+    @DisplayName("Should update password")
+    void shouldUpdatePassword() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "old-hashed-password"
+      );
+
+      ChangePasswordRequest request = new ChangePasswordRequest(
+          "old-password",
+          "new-password"
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/users/me/password")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isNoContent())
+          .andExpect(content().string(""));
+
+      // Verify
+      verify(userService)
+          .updatePassword(
+              user,
+              request
+          );
+    }
+
+    @Test
+    @DisplayName("Should return 400 when new password is blank")
+    void shouldReturn400WhenNewPasswordIsBlank() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "old-hashed-password"
+      );
+
+      ChangePasswordRequest request = new ChangePasswordRequest(
+          "old-password",
+          ""
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/users/me/password")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("New password is required.")
+          );
+
+      verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("Should return 400 when new password is too short")
+    void shouldReturn400WhenNewPasswordIsTooShort() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "old-hashed-password"
+      );
+
+      ChangePasswordRequest request = new ChangePasswordRequest(
+          "old-password",
+          "1234567"
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/users/me/password")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("New password must have at least 8 characters.")
+          );
+
+      verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("Should return 400 when current password is blank")
+    void shouldReturn400WhenCurrentPasswordIsBlank() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "old-hashed-password"
+      );
+
+      ChangePasswordRequest request = new ChangePasswordRequest(
+          "",
+          "new-password"
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/users/me/password")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("Current password is required.")
+          );
+
+      verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("Should return 400 when current password is too short")
+    void shouldReturn400WhenCurrentPasswordIsTooShort() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "old-hashed-password"
+      );
+
+      ChangePasswordRequest request = new ChangePasswordRequest(
+          "1234567",
+          "new-password"
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/users/me/password")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("Current password must have at least 8 characters.")
+          );
+
+      verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("Should return 400 when current password is incorrect")
+    void shouldReturn400WhenCurrentPasswordIsIncorrect() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "old-hashed-password"
+      );
+
+      ChangePasswordRequest request = new ChangePasswordRequest(
+          "wrong-password",
+          "new-password"
+      );
+
+      doThrow(new InvalidPasswordException())
+          .when(userService)
+          .updatePassword(user, request);
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/users/me/password")
+                  .with(user(user))
+                  .with(csrf())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(jsonMapper.writeValueAsString(request))
+          )
+          .andExpect(status().isUnauthorized())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("Current password is incorrect.")
+          );
+
+      verify(userService)
+          .updatePassword(user, request);
     }
   }
 }
