@@ -53,6 +53,9 @@ public class UserController {
     return ResponseEntity.ok(UserResponse.fromUser(updatedUser));
   }
 
+  /**
+   * PATCH Route to update password.
+   */
   @PatchMapping("/me/password")
   public ResponseEntity<Void> updatePassword(
       Authentication authentication,
