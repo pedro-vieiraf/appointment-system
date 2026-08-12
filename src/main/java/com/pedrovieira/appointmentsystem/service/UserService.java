@@ -7,6 +7,9 @@ import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * User Service.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -27,7 +30,7 @@ public class UserService {
       )) {
         throw new EmailAlreadyExistsException();
       }
-      
+
       user.setEmail(request.email());
     }
 

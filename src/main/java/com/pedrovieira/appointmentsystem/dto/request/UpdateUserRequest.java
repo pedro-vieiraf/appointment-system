@@ -3,6 +3,9 @@ package com.pedrovieira.appointmentsystem.dto.request;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 
+/**
+ * DTO to update users request.
+ */
 public record UpdateUserRequest(
 
     @Size(min = 3, max = 50,
@@ -11,4 +14,6 @@ public record UpdateUserRequest(
 
     @Email(message = "Email must be valid.")
     String email
-) {}
+) {
+
+}
