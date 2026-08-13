@@ -1,6 +1,7 @@
 package com.pedrovieira.appointmentsystem.controller;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.dto.response.AppointmentResponse;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
@@ -8,6 +9,7 @@ import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
 import com.pedrovieira.appointmentsystem.validation.OrderedValidation;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -51,13 +54,26 @@ public class AppointmentController {
   }
 
   /**
-   * GET Route that will get the list of appointment.
+   * GET Route that will get the list of appointment with filtering function.
    */
   @GetMapping
-  public ResponseEntity<List<AppointmentResponse>> getAll(Authentication authentication) {
+  public ResponseEntity<List<AppointmentResponse>> getAll(
+      Authentication authentication,
+      @RequestParam(required = false) String title,
+      @RequestParam(required = false) LocalDateTime startDate,
+      @RequestParam(required = false) LocalDateTime endDate
+  ) {
     User user = (User) authentication.getPrincipal();
 
-    List<Appointment> appointments = appointmentService.getAll(user);
+    AppointmentSearchCriteria criteria =
+        new AppointmentSearchCriteria(
+            title,
+            startDate,
+            endDate
+        );
+
+    List<Appointment> appointments =
+        appointmentService.search(user, criteria);
 
     return ResponseEntity.ok(
         appointments.stream()

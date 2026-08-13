@@ -1,5 +1,6 @@
 package com.pedrovieira.appointmentsystem.controller;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -17,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
@@ -470,7 +472,7 @@ public class AppointmentControllerTest {
 
     @Test
     @DisplayName("Should get appointments successfully")
-    public void shouldGetAppointmentsSuccessfully() throws Exception {
+    void shouldGetAppointmentsSuccessfully() throws Exception {
       // Arrange
       User user = new User(
           "John Doe",
@@ -484,6 +486,7 @@ public class AppointmentControllerTest {
           "Annual checkup",
           LocalDateTime.now().plusDays(1)
       );
+
       appointment1.setId(1L);
 
       Appointment appointment2 = new Appointment(
@@ -492,6 +495,7 @@ public class AppointmentControllerTest {
           "Dental checkup",
           LocalDateTime.now().plusDays(2)
       );
+
       appointment2.setId(2L);
 
       List<Appointment> appointments = List.of(
@@ -499,7 +503,14 @@ public class AppointmentControllerTest {
           appointment2
       );
 
-      when(appointmentService.getAll(user))
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      when(appointmentService.search(user, criteria))
           .thenReturn(appointments);
 
       // Act + Assert
@@ -511,13 +522,26 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$").isArray())
           .andExpect(jsonPath("$.length()").value(2))
           .andExpect(jsonPath("$[0].id").value(1))
-          .andExpect(jsonPath("$[0].title").value("Medical appointment"))
-          .andExpect(jsonPath("$[0].description").value("Annual checkup"))
+          .andExpect(
+              jsonPath("$[0].title")
+                  .value("Medical appointment")
+          )
+          .andExpect(
+              jsonPath("$[0].description")
+                  .value("Annual checkup")
+          )
           .andExpect(jsonPath("$[1].id").value(2))
-          .andExpect(jsonPath("$[1].title").value("Dentist"))
-          .andExpect(jsonPath("$[1].description").value("Dental checkup"));
+          .andExpect(
+              jsonPath("$[1].title")
+                  .value("Dentist")
+          )
+          .andExpect(
+              jsonPath("$[1].description")
+                  .value("Dental checkup")
+          );
 
-      verify(appointmentService).getAll(user);
+      verify(appointmentService)
+          .search(user, criteria);
     }
 
     @Test
@@ -530,7 +554,14 @@ public class AppointmentControllerTest {
           "hashed-password"
       );
 
-      when(appointmentService.getAll(user))
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      when(appointmentService.search(user, criteria))
           .thenReturn(List.of());
 
       // Act + Assert
@@ -542,7 +573,8 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$").isArray())
           .andExpect(jsonPath("$.length()").value(0));
 
-      verify(appointmentService).getAll(user);
+      verify(appointmentService)
+          .search(user, criteria);
     }
   }
 
@@ -609,6 +641,448 @@ public class AppointmentControllerTest {
 
       verify(appointmentService)
           .getById(user, appointmentId);
+    }
+  }
+
+  @Nested
+  @DisplayName("SEARCH User")
+  class SearchUser {
+
+    @Test
+    @DisplayName("Should return the correct appointments by title")
+    void shouldReturnAppointmentsByTitle() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment1
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              "Doctor",
+              null,
+              null
+          );
+
+      when(appointmentService.search(user, criteria))
+          .thenReturn(appointments);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param("title", "Doctor")
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(
+              jsonPath("$[0].title")
+                  .value("Doctor")
+          );
+
+      verify(appointmentService)
+          .search(user, criteria);
+    }
+
+    @Test
+    @DisplayName("Should return the correct appointments by start date")
+    void shouldReturnAppointmentsByStartDate() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime now = LocalDateTime.now();
+
+      LocalDateTime startDate =
+          now.plusDays(2);
+
+      LocalDateTime appointmentDate1 =
+          now.plusDays(1);
+
+      LocalDateTime appointmentDate2 =
+          now.plusDays(3);
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          appointmentDate1
+      );
+
+      appointment1.setId(1L);
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          appointmentDate2
+      );
+
+      appointment2.setId(2L);
+
+      List<Appointment> appointments = List.of(
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              startDate,
+              null
+          );
+
+      when(appointmentService.search(user, criteria))
+          .thenReturn(appointments);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param(
+                      "startDate",
+                      startDate.toString()
+                  )
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$").isArray())
+          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(
+              jsonPath("$[0].id")
+                  .value(2)
+          )
+          .andExpect(
+              jsonPath("$[0].title")
+                  .value("Dentist")
+          )
+          .andExpect(
+              jsonPath("$[0].description")
+                  .value("Dental appointment")
+          )
+          .andExpect(
+              jsonPath("$[0].appointmentDate")
+                  .value(
+                      org.hamcrest.Matchers.startsWith(
+                          appointmentDate2
+                              .withNano(0)
+                              .toString()
+                      )
+                  )
+          );
+
+      verify(appointmentService)
+          .search(user, criteria);
+    }
+
+    @Test
+    @DisplayName("Should return the correct appointments by end date")
+    void shouldReturnAppointmentsByEndDate() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime now =
+          LocalDateTime.now().withNano(0);
+
+      LocalDateTime endDate =
+          now.plusDays(4);
+
+      LocalDateTime appointmentDate1 =
+          now.plusDays(3);
+
+      LocalDateTime appointmentDate2 =
+          now.plusDays(5);
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          appointmentDate1
+      );
+
+      appointment1.setId(1L);
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          appointmentDate2
+      );
+
+      appointment2.setId(2L);
+
+      List<Appointment> appointments = List.of(
+          appointment1
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              endDate
+          );
+
+      when(appointmentService.search(user, criteria))
+          .thenReturn(appointments);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param(
+                      "endDate",
+                      endDate.toString()
+                  )
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$").isArray())
+          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(
+              jsonPath("$[0].id")
+                  .value(1)
+          )
+          .andExpect(
+              jsonPath("$[0].title")
+                  .value("Doctor")
+          )
+          .andExpect(
+              jsonPath("$[0].description")
+                  .value("Annual checkup")
+          )
+          .andExpect(
+              jsonPath("$[0].appointmentDate")
+                  .value(appointmentDate1.toString())
+          );
+
+      verify(appointmentService)
+          .search(user, criteria);
+    }
+
+    @Test
+    @DisplayName("Should return the correct appointments by date range")
+    void shouldReturnAppointmentsByDateRange() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime now =
+          LocalDateTime.now().withNano(0);
+
+      LocalDateTime startDate =
+          now.plusDays(2);
+
+      LocalDateTime endDate =
+          now.plusDays(5);
+
+      LocalDateTime appointmentDate1 =
+          now.plusDays(1);
+
+      LocalDateTime appointmentDate2 =
+          now.plusDays(3);
+
+      LocalDateTime appointmentDate3 =
+          now.plusDays(6);
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Before range",
+          appointmentDate1
+      );
+
+      appointment1.setId(1L);
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Inside range",
+          appointmentDate2
+      );
+
+      appointment2.setId(2L);
+
+      Appointment appointment3 = new Appointment(
+          user,
+          "Cardiologist",
+          "After range",
+          appointmentDate3
+      );
+
+      appointment3.setId(3L);
+
+      List<Appointment> appointments = List.of(
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              startDate,
+              endDate
+          );
+
+      when(appointmentService.search(user, criteria))
+          .thenReturn(appointments);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param(
+                      "startDate",
+                      startDate.toString()
+                  )
+                  .param(
+                      "endDate",
+                      endDate.toString()
+                  )
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$").isArray())
+          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(
+              jsonPath("$[0].id")
+                  .value(2)
+          )
+          .andExpect(
+              jsonPath("$[0].title")
+                  .value("Dentist")
+          )
+          .andExpect(
+              jsonPath("$[0].description")
+                  .value("Inside range")
+          )
+          .andExpect(
+              jsonPath("$[0].appointmentDate")
+                  .value(appointmentDate2.toString())
+          );
+
+      verify(appointmentService)
+          .search(user, criteria);
+    }
+
+    @Test
+    @DisplayName("Should return the correct appointments by title and date range")
+    void shouldReturnAppointmentsByTitleAndDateRange() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime now =
+          LocalDateTime.now().withNano(0);
+
+      LocalDateTime startDate =
+          now.plusDays(2);
+
+      LocalDateTime endDate =
+          now.plusDays(5);
+
+      LocalDateTime appointmentDate =
+          now.plusDays(3);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          appointmentDate
+      );
+
+      appointment.setId(1L);
+
+      List<Appointment> appointments = List.of(
+          appointment
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              "Doctor",
+              startDate,
+              endDate
+          );
+
+      when(appointmentService.search(user, criteria))
+          .thenReturn(appointments);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param("title", "Doctor")
+                  .param("startDate", startDate.toString())
+                  .param("endDate", endDate.toString())
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$").isArray())
+          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(
+              jsonPath("$[0].id")
+                  .value(1)
+          )
+          .andExpect(
+              jsonPath("$[0].title")
+                  .value("Doctor")
+          )
+          .andExpect(
+              jsonPath("$[0].description")
+                  .value("Annual checkup")
+          )
+          .andExpect(
+              jsonPath("$[0].appointmentDate")
+                  .value(appointmentDate.toString())
+          );
+
+      verify(appointmentService)
+          .search(user, criteria);
+    }
+
+    @Test
+    @DisplayName("Should return 400 when start date is invalid")
+    void shouldReturn400WhenStartDateIsInvalid() throws Exception {
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(
+                      new User(
+                          "John Doe",
+                          "john@email.com",
+                          "hashed-password"
+                      )
+                  ))
+                  .param("startDate", "invalid-date")
+          )
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(appointmentService);
     }
   }
 
