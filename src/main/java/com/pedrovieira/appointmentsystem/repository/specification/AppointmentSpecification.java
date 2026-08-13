@@ -8,8 +8,14 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 
+/**
+ * JPA specification for dynamically filtering appointments.
+ */
 public class AppointmentSpecification {
 
+  /**
+   * Creates a specification based on the provided search criteria.
+   */
   public static Specification<Appointment> withFilters(
       User user,
       AppointmentSearchCriteria criteria
