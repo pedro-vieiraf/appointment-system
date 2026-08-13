@@ -27,7 +27,7 @@ public class AppointmentService {
   private final Clock clock;
 
   /**
-   * CreateAppointment Function.
+   * Create Appointment.
    */
   public Appointment create(
       User user,

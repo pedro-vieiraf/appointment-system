@@ -95,7 +95,7 @@ public class AuthControllerRegisterTest {
         )
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message")
-            .value("Full name must contain between 2 and 100 characters."));
+            .value("Full name must contain between 3 and 50 characters."));
 
     verifyNoInteractions(authenticationService);
   }
@@ -117,7 +117,7 @@ public class AuthControllerRegisterTest {
         )
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message")
-            .value("Full name must contain between 2 and 100 characters."));
+            .value("Full name must contain between 3 and 50 characters."));
 
     verifyNoInteractions(authenticationService);
   }

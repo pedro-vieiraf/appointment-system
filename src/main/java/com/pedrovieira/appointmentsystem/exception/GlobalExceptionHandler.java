@@ -6,6 +6,7 @@ import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFo
 import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
 import com.pedrovieira.appointmentsystem.exception.users.EmailNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsException;
+import com.pedrovieira.appointmentsystem.exception.users.InvalidPasswordException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import org.springframework.http.HttpStatus;
@@ -165,6 +166,22 @@ public class GlobalExceptionHandler {
   ) {
     return createErrorResponse(
         HttpStatus.BAD_REQUEST,
+        exception.getMessage(),
+        request
+    );
+  }
+
+  /**
+   * Exception handler for InvalidPassword.
+   */
+  @ExceptionHandler(InvalidPasswordException.class)
+  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  public ErrorResponse handleInvalidPassword(
+      InvalidPasswordException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.UNAUTHORIZED,
         exception.getMessage(),
         request
     );
