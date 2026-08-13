@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
@@ -29,9 +30,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.jpa.domain.Specification;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -427,6 +430,451 @@ class AppointmentServiceTest {
               authenticatedUser,
               appointment.getId()
           );
+    }
+  }
+
+  @Nested
+  @DisplayName("Search Appointments")
+  class SearchAppointmentsTests {
+
+    @Test
+    @DisplayName("Should return all appointments when no filters are provided")
+    void shouldReturnAllAppointmentsWhenNoFiltersAreProvided() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any()
+          )
+      ).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(2, result.size());
+      assertEquals(appointments, result);
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
+    }
+
+    @Test
+    @DisplayName("Should filter appointments by title")
+    void shouldFilterAppointmentsByTitle() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment1
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              "Doctor",
+              null,
+              null
+          );
+
+      when(appointmentRepository.findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      )).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(1, result.size());
+      assertEquals(appointment1, result.get(0));
+
+      verify(appointmentRepository).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
+    }
+
+    @Test
+    @DisplayName("Should filter appointments by start date")
+    void shouldFilterAppointmentsByStartDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime startDate =
+          LocalDateTime.now().plusDays(4);
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          LocalDateTime.now().plusDays(5)
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              startDate,
+              null
+          );
+
+      List<Appointment> appointments = List.of(
+          appointment2
+      );
+
+      when(appointmentRepository.findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      )).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(1, result.size());
+      assertEquals(appointments, result);
+
+      verify(appointmentRepository).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
+    }
+
+    @Test
+    @DisplayName("Should filter appointments by end date")
+    void shouldFilterAppointmentsByEndDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime endDate =
+          LocalDateTime.now().plusDays(4);
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          LocalDateTime.now().plusDays(5)
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              endDate
+          );
+
+      List<Appointment> appointments = List.of(
+          appointment1
+      );
+
+      when(appointmentRepository.findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      )).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(1, result.size());
+      assertEquals(appointments, result);
+
+      verify(appointmentRepository).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
+    }
+
+    @Test
+    @DisplayName("Should filter appointments by date range")
+    void shouldFilterAppointmentsByDateRange() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime startDate =
+          LocalDateTime.now().plusDays(2);
+
+      LocalDateTime endDate =
+          LocalDateTime.now().plusDays(4);
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(3)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental appointment",
+          LocalDateTime.now().plusDays(5)
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              startDate,
+              endDate
+          );
+
+      List<Appointment> appointments = List.of(
+          appointment1
+      );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any()
+          )
+      ).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(1, result.size());
+      assertEquals(appointments, result);
+
+      verify(appointmentRepository).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
+    }
+
+    @Test
+    @DisplayName("Should filter appointments by title and start date")
+    void shouldFilterAppointmentsByTitleAndStartDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime startDate =
+          LocalDateTime.now().plusDays(2);
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              "Doctor",
+              startDate,
+              null
+          );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(3)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment
+      );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any()
+          )
+      ).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(1, result.size());
+      assertEquals(appointment, result.get(0));
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
+    }
+
+    @Test
+    @DisplayName("Should filter appointments by title and end date")
+    void shouldFilterAppointmentsByTitleAndEndDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime endDate =
+          LocalDateTime.now().plusDays(4);
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              "Doctor",
+              null,
+              endDate
+          );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(3)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment
+      );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any()
+          )
+      ).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(1, result.size());
+      assertEquals(appointment, result.get(0));
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
+    }
+
+    @Test
+    @DisplayName(
+        "Should filter appointments by title and date range"
+    )
+    void shouldFilterAppointmentsByTitleAndDateRange() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime startDate =
+          LocalDateTime.now().plusDays(2);
+
+      LocalDateTime endDate =
+          LocalDateTime.now().plusDays(5);
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              "Doctor",
+              startDate,
+              endDate
+          );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(3)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment
+      );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any()
+          )
+      ).thenReturn(appointments);
+
+      // Act
+      List<Appointment> result =
+          appointmentService.search(user, criteria);
+
+      // Assert
+      assertEquals(1, result.size());
+      assertEquals(appointment, result.get(0));
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any()
+      );
     }
   }
 

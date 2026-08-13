@@ -1,6 +1,7 @@
 package com.pedrovieira.appointmentsystem.service;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
@@ -9,11 +10,13 @@ import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConfl
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
+import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 /**
@@ -129,5 +132,18 @@ public class AppointmentService {
     Appointment appointment = getById(user, id);
 
     appointmentRepository.delete(appointment);
+  }
+
+  /**
+   * Search Appointment.
+   */
+  public List<Appointment> search(
+      User user,
+      AppointmentSearchCriteria criteria
+  ) {
+    Specification<Appointment> specification =
+        AppointmentSpecification.withFilters(user, criteria);
+
+    return appointmentRepository.findAll(specification);
   }
 }
