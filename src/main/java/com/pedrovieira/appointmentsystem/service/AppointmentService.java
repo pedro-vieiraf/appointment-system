@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -138,19 +140,23 @@ public class AppointmentService {
   /**
    * Search Appointment.
    */
-  public List<Appointment> search(
+  public Page<Appointment> search(
       User user,
-      AppointmentSearchCriteria criteria
+      AppointmentSearchCriteria criteria,
+      Pageable pageable
   ) {
     if (criteria.startDate() != null
         && criteria.endDate() != null
         && criteria.endDate().isBefore(criteria.startDate())) {
       throw new InvalidAppointmentDateRangeException();
     }
-    
+
     Specification<Appointment> specification =
         AppointmentSpecification.withFilters(user, criteria);
 
-    return appointmentRepository.findAll(specification);
+    return appointmentRepository.findAll(
+        specification,
+        pageable
+    );
   }
 }

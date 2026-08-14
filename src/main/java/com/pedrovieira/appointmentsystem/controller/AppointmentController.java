@@ -10,8 +10,11 @@ import com.pedrovieira.appointmentsystem.service.AppointmentService;
 import com.pedrovieira.appointmentsystem.validation.OrderedValidation;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -57,11 +60,17 @@ public class AppointmentController {
    * GET Route that will get the list of appointment with filtering function.
    */
   @GetMapping
-  public ResponseEntity<List<AppointmentResponse>> getAll(
+  public ResponseEntity<Page<AppointmentResponse>> getAll(
       Authentication authentication,
       @RequestParam(required = false) String title,
       @RequestParam(required = false) LocalDateTime startDate,
-      @RequestParam(required = false) LocalDateTime endDate
+      @RequestParam(required = false) LocalDateTime endDate,
+      @PageableDefault(
+          size = 10,
+          sort = "appointmentDate",
+          direction = Sort.Direction.ASC
+      )
+      Pageable pageable
   ) {
     User user = (User) authentication.getPrincipal();
 
@@ -72,14 +81,17 @@ public class AppointmentController {
             endDate
         );
 
-    List<Appointment> appointments =
-        appointmentService.search(user, criteria);
+    Page<Appointment> appointments =
+        appointmentService.search(
+            user,
+            criteria,
+            pageable
+        );
 
-    return ResponseEntity.ok(
-        appointments.stream()
-            .map(AppointmentResponse::fromAppointment)
-            .toList()
-    );
+    Page<AppointmentResponse> response =
+        appointments.map(AppointmentResponse::fromAppointment);
+
+    return ResponseEntity.ok(response);
   }
 
   /**
