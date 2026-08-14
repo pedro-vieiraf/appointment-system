@@ -3,6 +3,7 @@ package com.pedrovieira.appointmentsystem.exception;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
 import com.pedrovieira.appointmentsystem.exception.users.EmailNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsException;
@@ -182,6 +183,22 @@ public class GlobalExceptionHandler {
   ) {
     return createErrorResponse(
         HttpStatus.UNAUTHORIZED,
+        exception.getMessage(),
+        request
+    );
+  }
+
+  /**
+   * Exception handler for InvalidAppointmentDateRange.
+   */
+  @ExceptionHandler(InvalidAppointmentDateRangeException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleInvalidAppointmentDateRange(
+      InvalidAppointmentDateRangeException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.BAD_REQUEST,
         exception.getMessage(),
         request
     );

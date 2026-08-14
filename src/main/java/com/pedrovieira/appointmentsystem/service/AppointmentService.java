@@ -1,6 +1,7 @@
 package com.pedrovieira.appointmentsystem.service;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
@@ -8,12 +9,16 @@ import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
+import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 /**
@@ -55,13 +60,6 @@ public class AppointmentService {
         );
 
     return appointmentRepository.save(appointment);
-  }
-
-  /**
-   * GetAll Appointments by User.
-   */
-  public List<Appointment> getAll(User user) {
-    return appointmentRepository.findAllByUser(user);
   }
 
   /**
@@ -129,5 +127,64 @@ public class AppointmentService {
     Appointment appointment = getById(user, id);
 
     appointmentRepository.delete(appointment);
+  }
+
+  /**
+   * Get all appointments for a user with optional filters and pagination.
+   */
+  public Page<Appointment> getAll(
+      User user,
+      AppointmentSearchCriteria criteria,
+      Pageable pageable
+  ) {
+    if (criteria.startDate() != null
+        && criteria.endDate() != null
+        && criteria.endDate().isBefore(criteria.startDate())) {
+      throw new InvalidAppointmentDateRangeException();
+    }
+
+    Specification<Appointment> specification =
+        AppointmentSpecification.withFilters(user, criteria);
+
+    return appointmentRepository.findAll(
+        specification,
+        pageable
+    );
+  }
+
+  /**
+   * Complete an appointment.
+   */
+  public Appointment complete(User user, Long appointmentId) {
+    Appointment appointment =
+        getById(user, appointmentId);
+
+    appointment.markAsCompleted();
+
+    return appointmentRepository.save(appointment);
+  }
+
+  /**
+   * Confirm an appointment.
+   */
+  public Appointment confirm(User user, Long appointmentId) {
+    Appointment appointment =
+        getById(user, appointmentId);
+
+    appointment.markAsConfirmed();
+
+    return appointmentRepository.save(appointment);
+  }
+
+  /**
+   * Cancel an appointment.
+   */
+  public Appointment cancel(User user, Long appointmentId) {
+    Appointment appointment =
+        getById(user, appointmentId);
+
+    appointment.markAsCanceled();
+
+    return appointmentRepository.save(appointment);
   }
 }

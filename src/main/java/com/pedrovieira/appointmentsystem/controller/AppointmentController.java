@@ -1,6 +1,7 @@
 package com.pedrovieira.appointmentsystem.controller;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
+import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.dto.response.AppointmentResponse;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
@@ -8,8 +9,12 @@ import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
 import com.pedrovieira.appointmentsystem.validation.OrderedValidation;
 import jakarta.validation.Valid;
-import java.util.List;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -51,19 +57,41 @@ public class AppointmentController {
   }
 
   /**
-   * GET Route that will get the list of appointment.
+   * GET Route that will get the list of appointment with filtering function.
    */
   @GetMapping
-  public ResponseEntity<List<AppointmentResponse>> getAll(Authentication authentication) {
+  public ResponseEntity<Page<AppointmentResponse>> getAll(
+      Authentication authentication,
+      @RequestParam(required = false) String title,
+      @RequestParam(required = false) LocalDateTime startDate,
+      @RequestParam(required = false) LocalDateTime endDate,
+      @PageableDefault(
+          size = 10,
+          sort = "appointmentDate",
+          direction = Sort.Direction.ASC
+      )
+      Pageable pageable
+  ) {
     User user = (User) authentication.getPrincipal();
 
-    List<Appointment> appointments = appointmentService.getAll(user);
+    AppointmentSearchCriteria criteria =
+        new AppointmentSearchCriteria(
+            title,
+            startDate,
+            endDate
+        );
 
-    return ResponseEntity.ok(
-        appointments.stream()
-            .map(AppointmentResponse::fromAppointment)
-            .toList()
-    );
+    Page<Appointment> appointments =
+        appointmentService.getAll(
+            user,
+            criteria,
+            pageable
+        );
+
+    Page<AppointmentResponse> response =
+        appointments.map(AppointmentResponse::fromAppointment);
+
+    return ResponseEntity.ok(response);
   }
 
   /**
@@ -115,5 +143,59 @@ public class AppointmentController {
     appointmentService.delete(user, id);
 
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * PATCH Route to confirm an appointment.
+   */
+  @PatchMapping("/{id}/confirm")
+  public ResponseEntity<AppointmentResponse> confirm(
+      Authentication authentication,
+      @PathVariable Long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    Appointment appointment =
+        appointmentService.confirm(user, id);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment)
+    );
+  }
+
+  /**
+   * PATCH Route to cancel an appointment.
+   */
+  @PatchMapping("/{id}/cancel")
+  public ResponseEntity<AppointmentResponse> cancel(
+      Authentication authentication,
+      @PathVariable Long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    Appointment appointment =
+        appointmentService.cancel(user, id);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment)
+    );
+  }
+
+  /**
+   * PATCH Route to confirm an appointment.
+   */
+  @PatchMapping("/{id}/complete")
+  public ResponseEntity<AppointmentResponse> complete(
+      Authentication authentication,
+      @PathVariable Long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    Appointment appointment =
+        appointmentService.complete(user, id);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment)
+    );
   }
 }

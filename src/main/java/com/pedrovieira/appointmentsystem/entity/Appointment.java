@@ -126,8 +126,9 @@ public class Appointment {
    * Method to markAsCanceled an appointment.
    */
   public void markAsCanceled() {
-    if (status != AppointmentStatus.CONFIRMED) {
-      throw new BusinessRuleException("Only confirmed appointments can be cancelled");
+    if (status != AppointmentStatus.CONFIRMED
+        && status != AppointmentStatus.PENDING) {
+      throw new BusinessRuleException("Only pending or confirmed appointments can be cancelled");
     }
     status = AppointmentStatus.CANCELLED;
   }
