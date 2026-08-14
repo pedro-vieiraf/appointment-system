@@ -14,7 +14,6 @@ import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -61,13 +60,6 @@ public class AppointmentService {
         );
 
     return appointmentRepository.save(appointment);
-  }
-
-  /**
-   * GetAll Appointments by User.
-   */
-  public List<Appointment> getAll(User user) {
-    return appointmentRepository.findAllByUser(user);
   }
 
   /**
@@ -138,9 +130,9 @@ public class AppointmentService {
   }
 
   /**
-   * Search Appointment.
+   * Get all appointments for a user with optional filters and pagination.
    */
-  public Page<Appointment> search(
+  public Page<Appointment> getAll(
       User user,
       AppointmentSearchCriteria criteria,
       Pageable pageable

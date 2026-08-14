@@ -3,6 +3,7 @@ package com.pedrovieira.appointmentsystem.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -41,6 +42,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 
@@ -244,76 +246,6 @@ class AppointmentServiceTest {
   }
 
   @Nested
-  @DisplayName("Get All Appointments")
-  class GetAllAppointmentsTests {
-
-    @Test
-    @DisplayName("Get all appointments successfully")
-    void getAllAppointmentsSuccessfully() {
-      // Assert
-      User user = new User(
-          "John Doe",
-          "john@email.com",
-          "hashed-password"
-      );
-
-      Appointment appointment1 = new Appointment(
-          user,
-          "Medical appointment",
-          "Annual checkup",
-          LocalDateTime.now().plusDays(1)
-      );
-
-      Appointment appointment2 = new Appointment(
-          user,
-          "Dentist",
-          "Dental cleaning",
-          LocalDateTime.now().plusDays(2)
-      );
-
-      List<Appointment> appointments = List.of(
-          appointment1,
-          appointment2
-      );
-      when(appointmentRepository.findAllByUser(user))
-          .thenReturn(appointments);
-
-      // Act
-      List<Appointment> response = appointmentService.getAll(user);
-
-      // Assert
-      assertEquals(2, response.size());
-      assertEquals(appointments, response);
-
-      verify(appointmentRepository).findAllByUser(user);
-    }
-
-    @Test
-    @DisplayName("Get empty list when user has no appointments")
-    void getAllAppointmentsWhenUserHasNoAppointments() {
-      // Assert
-      User user = new User(
-          "John Doe",
-          "john@email.com",
-          "hashed-password"
-      );
-      List<Appointment> appointments = List.of();
-
-      when(appointmentRepository.findAllByUser(user))
-          .thenReturn(appointments);
-
-      // Act
-      List<Appointment> response = appointmentService.getAll(user);
-
-      // Assert
-      assertEquals(0, response.size());
-
-      verify(appointmentRepository).findAllByUser(user);
-    }
-
-  }
-
-  @Nested
   @DisplayName("Get Appointments By ID")
   class GetAppointmentsByIdTests {
 
@@ -441,8 +373,8 @@ class AppointmentServiceTest {
   }
 
   @Nested
-  @DisplayName("Search Appointments")
-  class SearchAppointmentsTests {
+  @DisplayName("Get All Appointments")
+  class GetAllAppointmentsTests {
 
     @Test
     @DisplayName("Should return all appointments when no filters are provided")
@@ -499,7 +431,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable
@@ -536,6 +468,60 @@ class AppointmentServiceTest {
               ArgumentMatchers.<Specification<Appointment>>any(),
               eq(pageable)
           );
+    }
+
+    @Test
+    @DisplayName("Should return an empty page when user has no appointments")
+    void shouldReturnEmptyPageWhenUserHasNoAppointments() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(0, 10);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              List.of(),
+              pageable,
+              0
+          );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any(),
+              eq(pageable)
+          )
+      ).thenReturn(page);
+
+      // Act
+      Page<Appointment> result =
+          appointmentService.getAll(
+              user,
+              criteria,
+              pageable
+          );
+
+      // Assert
+      assertTrue(result.isEmpty());
+      assertEquals(0, result.getTotalElements());
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
+      );
     }
 
     @Test
@@ -592,7 +578,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable
@@ -674,7 +660,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable
@@ -756,7 +742,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable
@@ -846,7 +832,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable
@@ -924,7 +910,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable);
@@ -991,7 +977,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable);
@@ -1061,7 +1047,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable);
@@ -1110,7 +1096,7 @@ class AppointmentServiceTest {
       // Act + Assert
       assertThrows(
           InvalidAppointmentDateRangeException.class,
-          () -> appointmentService.search(
+          () -> appointmentService.getAll(
               user,
               criteria,
               pageable
@@ -1175,7 +1161,7 @@ class AppointmentServiceTest {
 
       // Act
       Page<Appointment> result =
-          appointmentService.search(
+          appointmentService.getAll(
               user,
               criteria,
               pageable
@@ -1198,6 +1184,264 @@ class AppointmentServiceTest {
               any(Specification.class),
               eq(pageable)
           );
+    }
+
+    @Test
+    @DisplayName("Should return appointments sorted by date")
+    void shouldReturnAppointmentsSortedByDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(
+              0,
+              10,
+              Sort.by(
+                  Sort.Direction.ASC,
+                  "appointmentDate"
+              )
+          );
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any(),
+              eq(pageable)
+          )
+      ).thenReturn(page);
+
+      // Act
+      Page<Appointment> result =
+          appointmentService.getAll(
+              user,
+              criteria,
+              pageable
+          );
+
+      // Assert
+      assertEquals(2, result.getContent().size());
+      assertEquals(
+          appointment1,
+          result.getContent().get(0)
+      );
+      assertEquals(
+          appointment2,
+          result.getContent().get(1)
+      );
+
+      verify(appointmentRepository).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
+      );
+    }
+
+    @Test
+    @DisplayName("Should return appointments sorted by date descending")
+    void shouldReturnAppointmentsSortedByDateDescending() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment2,
+          appointment1
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(
+              0,
+              10,
+              Sort.by(
+                  Sort.Direction.DESC,
+                  "appointmentDate"
+              )
+          );
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any(),
+              eq(pageable)
+          )
+      ).thenReturn(page);
+
+      // Act
+      Page<Appointment> result =
+          appointmentService.getAll(
+              user,
+              criteria,
+              pageable
+          );
+
+      // Assert
+      assertEquals(2, result.getContent().size());
+      assertEquals(
+          appointment2,
+          result.getContent().get(0)
+      );
+      assertEquals(
+          appointment1,
+          result.getContent().get(1)
+      );
+
+      verify(appointmentRepository).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
+      );
+    }
+
+    @Test
+    @DisplayName("Should apply pagination and sorting")
+    void shouldApplyPaginationAndSorting() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(3)
+      );
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(
+              1,
+              2,
+              Sort.by(
+                  Sort.Direction.DESC,
+                  "appointmentDate"
+              )
+          );
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              4
+          );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any(),
+              eq(pageable)
+          )
+      ).thenReturn(page);
+
+      // Act
+      Page<Appointment> result =
+          appointmentService.getAll(
+              user,
+              criteria,
+              pageable
+          );
+
+      // Assert
+      assertEquals(2, result.getContent().size());
+      assertEquals(4, result.getTotalElements());
+      assertEquals(1, result.getNumber());
+      assertEquals(2, result.getSize());
+      assertEquals(
+          appointment1,
+          result.getContent().get(0)
+      );
+      assertEquals(
+          appointment2,
+          result.getContent().get(1)
+      );
+
+      verify(appointmentRepository).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
+      );
     }
   }
 

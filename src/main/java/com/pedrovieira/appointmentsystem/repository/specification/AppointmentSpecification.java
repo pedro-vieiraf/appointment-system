@@ -15,7 +15,7 @@ import org.springframework.data.jpa.domain.Specification;
 public class AppointmentSpecification {
 
   /**
-   * Creates a specification based on the provided search criteria.
+   * Creates a specification based on the provided getAll criteria.
    */
   public static Specification<Appointment> withFilters(
       User user,

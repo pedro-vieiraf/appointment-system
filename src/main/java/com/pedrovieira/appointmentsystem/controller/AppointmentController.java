@@ -82,7 +82,7 @@ public class AppointmentController {
         );
 
     Page<Appointment> appointments =
-        appointmentService.search(
+        appointmentService.getAll(
             user,
             criteria,
             pageable

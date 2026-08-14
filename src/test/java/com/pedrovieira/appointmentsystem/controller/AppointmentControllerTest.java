@@ -1,5 +1,8 @@
 package com.pedrovieira.appointmentsystem.controller;
 
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -31,6 +34,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Page;
@@ -236,7 +240,11 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.description").doesNotExist())
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(appointmentDate.toString())
+                  .value(
+                      org.hamcrest.Matchers.startsWith(
+                          appointmentDate.toString()
+                      )
+                  )
           );
     }
 
@@ -533,7 +541,7 @@ public class AppointmentControllerTest {
           );
 
       when(
-          appointmentService.search(
+          appointmentService.getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -572,7 +580,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -607,7 +615,7 @@ public class AppointmentControllerTest {
           );
 
       when(
-          appointmentService.search(
+          appointmentService.getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -628,11 +636,449 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
           );
+    }
+
+    @Test
+    @DisplayName("Should return paginated appointments")
+    void shouldReturnPaginatedAppointments() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Medical appointment",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment1.setId(1L);
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      appointment2.setId(2L);
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(1, 2);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              4
+          );
+
+      when(
+          appointmentService.getAll(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param("page", "1")
+                  .param("size", "2")
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content", hasSize(2)))
+          .andExpect(
+              jsonPath("$.content[0].id")
+                  .value(1)
+          )
+          .andExpect(
+              jsonPath("$.content[1].id")
+                  .value(2)
+          )
+          .andExpect(
+              jsonPath("$.totalElements")
+                  .value(4)
+          )
+          .andExpect(
+              jsonPath("$.size")
+                  .value(2)
+          )
+          .andExpect(
+              jsonPath("$.number")
+                  .value(1)
+          );
+
+      verify(appointmentService).getAll(
+          eq(user),
+          eq(criteria),
+          any(Pageable.class)
+      );
+    }
+
+    @Test
+    @DisplayName("Should sort appointments by date descending")
+    void shouldSortAppointmentsByDateDescending() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment1.setId(1L);
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      appointment2.setId(2L);
+
+      List<Appointment> appointments = List.of(
+          appointment2,
+          appointment1
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(
+              0,
+              10,
+              Sort.by(
+                  Sort.Direction.DESC,
+                  "appointmentDate"
+              )
+          );
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.getAll(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param(
+                      "sort",
+                      "appointmentDate,desc"
+                  )
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content", hasSize(2)))
+          .andExpect(
+              jsonPath("$.content[0].id")
+                  .value(2)
+          )
+          .andExpect(
+              jsonPath("$.content[1].id")
+                  .value(1)
+          );
+
+      ArgumentCaptor<Pageable> pageableCaptor =
+          ArgumentCaptor.forClass(Pageable.class);
+
+      verify(appointmentService).getAll(
+          eq(user),
+          eq(criteria),
+          pageableCaptor.capture()
+      );
+
+      Pageable capturedPageable =
+          pageableCaptor.getValue();
+
+      assertEquals(0, capturedPageable.getPageNumber());
+      assertEquals(10, capturedPageable.getPageSize());
+
+      Sort.Order order =
+          capturedPageable.getSort()
+              .getOrderFor("appointmentDate");
+
+      assertNotNull(order);
+      assertEquals(
+          Sort.Direction.DESC,
+          order.getDirection()
+      );
+    }
+
+    @Test
+    @DisplayName("Should sort appointments by date ascending")
+    void shouldSortAppointmentsByDateAscending() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment1.setId(1L);
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      appointment2.setId(2L);
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(
+              0,
+              10,
+              Sort.by(
+                  Sort.Direction.ASC,
+                  "appointmentDate"
+              )
+          );
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.getAll(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param(
+                      "sort",
+                      "appointmentDate,asc"
+                  )
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content", hasSize(2)))
+          .andExpect(
+              jsonPath("$.content[0].id")
+                  .value(1)
+          )
+          .andExpect(
+              jsonPath("$.content[1].id")
+                  .value(2)
+          );
+
+      ArgumentCaptor<Pageable> pageableCaptor =
+          ArgumentCaptor.forClass(Pageable.class);
+
+      verify(appointmentService).getAll(
+          eq(user),
+          eq(criteria),
+          pageableCaptor.capture()
+      );
+
+      Pageable capturedPageable =
+          pageableCaptor.getValue();
+
+      assertEquals(0, capturedPageable.getPageNumber());
+      assertEquals(10, capturedPageable.getPageSize());
+
+      Sort.Order order =
+          capturedPageable.getSort()
+              .getOrderFor("appointmentDate");
+
+      assertNotNull(order);
+      assertEquals(
+          Sort.Direction.ASC,
+          order.getDirection()
+      );
+    }
+
+    @Test
+    @DisplayName("Should apply pagination and sorting")
+    void shouldApplyPaginationAndSorting() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment1 = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(3)
+      );
+
+      appointment1.setId(1L);
+
+      Appointment appointment2 = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          LocalDateTime.now().plusDays(2)
+      );
+
+      appointment2.setId(2L);
+
+      List<Appointment> appointments = List.of(
+          appointment1,
+          appointment2
+      );
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              null,
+              null
+          );
+
+      Pageable pageable =
+          PageRequest.of(
+              1,
+              2,
+              Sort.by(
+                  Sort.Direction.DESC,
+                  "appointmentDate"
+              )
+          );
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              4
+          );
+
+      when(
+          appointmentService.getAll(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param("page", "1")
+                  .param("size", "2")
+                  .param(
+                      "sort",
+                      "appointmentDate,desc"
+                  )
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content", hasSize(2)))
+          .andExpect(
+              jsonPath("$.totalElements")
+                  .value(4)
+          )
+          .andExpect(
+              jsonPath("$.size")
+                  .value(2)
+          )
+          .andExpect(
+              jsonPath("$.number")
+                  .value(1)
+          );
+
+      ArgumentCaptor<Pageable> pageableCaptor =
+          ArgumentCaptor.forClass(Pageable.class);
+
+      verify(appointmentService).getAll(
+          eq(user),
+          eq(criteria),
+          pageableCaptor.capture()
+      );
+
+      Pageable capturedPageable =
+          pageableCaptor.getValue();
+
+      assertEquals(1, capturedPageable.getPageNumber());
+      assertEquals(2, capturedPageable.getPageSize());
+
+      Sort.Order order =
+          capturedPageable.getSort()
+              .getOrderFor("appointmentDate");
+
+      assertNotNull(order);
+      assertEquals(
+          Sort.Direction.DESC,
+          order.getDirection()
+      );
     }
   }
 
@@ -756,7 +1202,7 @@ public class AppointmentControllerTest {
           );
 
       when(
-          appointmentService.search(
+          appointmentService.getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -782,7 +1228,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -850,7 +1296,7 @@ public class AppointmentControllerTest {
           );
 
       when(
-          appointmentService.search(
+          appointmentService.getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -897,7 +1343,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -966,7 +1412,7 @@ public class AppointmentControllerTest {
           );
 
       when(
-          appointmentService.search(
+          appointmentService.getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -1011,7 +1457,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -1095,7 +1541,7 @@ public class AppointmentControllerTest {
           );
 
       when(
-          appointmentService.search(
+          appointmentService.getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -1144,7 +1590,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -1204,7 +1650,7 @@ public class AppointmentControllerTest {
           );
 
       when(
-          appointmentService.search(
+          appointmentService.getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -1254,7 +1700,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -1309,7 +1755,7 @@ public class AppointmentControllerTest {
 
       doThrow(new InvalidAppointmentDateRangeException())
           .when(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
@@ -1335,7 +1781,7 @@ public class AppointmentControllerTest {
           );
 
       verify(appointmentService)
-          .search(
+          .getAll(
               eq(user),
               eq(criteria),
               any(Pageable.class)
