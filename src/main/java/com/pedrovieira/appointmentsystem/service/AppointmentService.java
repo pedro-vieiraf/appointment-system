@@ -9,6 +9,7 @@ import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
@@ -141,6 +142,12 @@ public class AppointmentService {
       User user,
       AppointmentSearchCriteria criteria
   ) {
+    if (criteria.startDate() != null
+        && criteria.endDate() != null
+        && criteria.endDate().isBefore(criteria.startDate())) {
+      throw new InvalidAppointmentDateRangeException();
+    }
+    
     Specification<Appointment> specification =
         AppointmentSpecification.withFilters(user, criteria);
 

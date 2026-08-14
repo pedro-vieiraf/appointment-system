@@ -6,6 +6,7 @@ import com.pedrovieira.appointmentsystem.entity.User;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -27,11 +28,12 @@ public class AppointmentSpecification {
           builder.equal(root.get("user"), user)
       );
 
-      if (criteria.title() != null) {
+      if (criteria.title() != null
+          && !criteria.title().isBlank()) {
         predicates.add(
             builder.like(
                 builder.lower(root.get("title")),
-                "%" + criteria.title().toLowerCase() + "%"
+                "%" + criteria.title().toLowerCase(Locale.ROOT) + "%"
             )
         );
       }

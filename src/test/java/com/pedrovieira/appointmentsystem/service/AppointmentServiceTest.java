@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
@@ -18,6 +19,7 @@ import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -821,9 +823,7 @@ class AppointmentServiceTest {
     }
 
     @Test
-    @DisplayName(
-        "Should filter appointments by title and date range"
-    )
+    @DisplayName("Should filter appointments by title and date range")
     void shouldFilterAppointmentsByTitleAndDateRange() {
       // Arrange
       User user = new User(
@@ -875,6 +875,41 @@ class AppointmentServiceTest {
       ).findAll(
           ArgumentMatchers.<Specification<Appointment>>any()
       );
+    }
+
+    @Test
+    @DisplayName("Should throw exception when end date is before start date")
+    void shouldThrowExceptionWhenEndDateIsBeforeStartDate() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime now =
+          LocalDateTime.now().withNano(0);
+
+      LocalDateTime startDate =
+          now.plusDays(5);
+
+      LocalDateTime endDate =
+          now.plusDays(2);
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              startDate,
+              endDate
+          );
+
+      // Act + Assert
+      assertThrows(
+          InvalidAppointmentDateRangeException.class,
+          () -> appointmentService.search(user, criteria)
+      );
+
+      verifyNoInteractions(appointmentRepository);
     }
   }
 

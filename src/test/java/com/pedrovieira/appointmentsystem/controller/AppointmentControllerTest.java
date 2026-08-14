@@ -23,6 +23,7 @@ import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
+import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.security.JwtService;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
@@ -1083,6 +1084,59 @@ public class AppointmentControllerTest {
           .andExpect(status().isBadRequest());
 
       verifyNoInteractions(appointmentService);
+    }
+
+    @Test
+    @DisplayName("Should return 400 when end date is before start date")
+    void shouldReturn400WhenEndDateIsBeforeStartDate() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime now =
+          LocalDateTime.now().withNano(0);
+
+      LocalDateTime startDate =
+          now.plusDays(5);
+
+      LocalDateTime endDate =
+          now.plusDays(2);
+
+      AppointmentSearchCriteria criteria =
+          new AppointmentSearchCriteria(
+              null,
+              startDate,
+              endDate
+          );
+
+      doThrow(new InvalidAppointmentDateRangeException())
+          .when(appointmentService)
+          .search(user, criteria);
+
+      // Act + Assert
+      mockMvc.perform(
+              get("/appointments")
+                  .with(user(user))
+                  .param(
+                      "startDate",
+                      startDate.toString()
+                  )
+                  .param(
+                      "endDate",
+                      endDate.toString()
+                  )
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(
+              jsonPath("$.message")
+                  .value("End date must be after start date.")
+          );
+
+      verify(appointmentService)
+          .search(user, criteria);
     }
   }
 
