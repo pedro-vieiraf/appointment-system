@@ -2419,8 +2419,9 @@ class AppointmentServiceTest {
       );
 
       appointment.setId(1L);
+      appointment.markAsConfirmed();
+      appointment.markAsCompleted();
 
-      // Appointment starts as PENDING.
       when(
           appointmentRepository.findByIdAndUser(
               user,
@@ -2435,7 +2436,7 @@ class AppointmentServiceTest {
       );
 
       assertEquals(
-          AppointmentStatus.PENDING,
+          AppointmentStatus.COMPLETED,
           appointment.getStatus()
       );
 

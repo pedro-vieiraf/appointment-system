@@ -156,8 +156,8 @@ class AppointmentTest {
     }
 
     @Test
-    @DisplayName("Should not cancel a pending appointment")
-    void shouldNotCancelPendingAppointment() {
+    @DisplayName("Should cancel a pending appointment")
+    void shouldCancelPendingAppointment() {
       // Arrange
       User user = new User(
           "John Doe",
@@ -172,19 +172,12 @@ class AppointmentTest {
           LocalDateTime.now().plusDays(1)
       );
 
-      // Act + Assert
-      BusinessRuleException exception = assertThrows(
-          BusinessRuleException.class,
-          appointment::markAsCanceled
-      );
+      // Act
+      appointment.markAsCanceled();
 
+      // Assert
       assertEquals(
-          "Only confirmed appointments can be cancelled",
-          exception.getMessage()
-      );
-
-      assertEquals(
-          AppointmentStatus.PENDING,
+          AppointmentStatus.CANCELLED,
           appointment.getStatus()
       );
     }
@@ -286,7 +279,7 @@ class AppointmentTest {
       );
 
       assertEquals(
-          "Only confirmed appointments can be cancelled",
+          "Only pending or confirmed appointments can be cancelled",
           exception.getMessage()
       );
 
