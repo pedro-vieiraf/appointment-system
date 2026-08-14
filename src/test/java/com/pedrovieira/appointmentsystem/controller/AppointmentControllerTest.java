@@ -24,6 +24,7 @@ import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
@@ -2349,6 +2350,272 @@ public class AppointmentControllerTest {
 
       verify(appointmentService)
           .delete(user, appointmentId);
+    }
+  }
+
+  @Nested
+  @DisplayName("Appointment status transitions")
+  class AppointmentStatusTransitionTests {
+
+    @Test
+    @DisplayName("Should confirm appointment successfully")
+    void shouldConfirmAppointmentSuccessfully() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime appointmentDate =
+          LocalDateTime.now()
+              .plusDays(1)
+              .withNano(0);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          appointmentDate
+      );
+
+      appointment.setId(1L);
+
+      when(
+          appointmentService.confirm(
+              eq(user),
+              eq(1L)
+          )
+      ).thenReturn(appointment);
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/appointments/1/confirm")
+                  .with(csrf())
+                  .with(user(user))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.id").value(1))
+          .andExpect(
+              jsonPath("$.title")
+                  .value("Doctor")
+          )
+          .andExpect(
+              jsonPath("$.description")
+                  .value("Annual checkup")
+          )
+          .andExpect(
+              jsonPath("$.appointmentDate")
+                  .value(appointmentDate.toString())
+          );
+
+      verify(appointmentService).confirm(
+          eq(user),
+          eq(1L)
+      );
+    }
+
+    @Test
+    @DisplayName("Should complete appointment successfully")
+    void shouldCompleteAppointmentSuccessfully() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime appointmentDate =
+          LocalDateTime.now()
+              .plusDays(1)
+              .withNano(0);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Dentist",
+          "Dental cleaning",
+          appointmentDate
+      );
+
+      appointment.setId(2L);
+
+      when(
+          appointmentService.complete(
+              eq(user),
+              eq(2L)
+          )
+      ).thenReturn(appointment);
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/appointments/2/complete")
+                  .with(csrf())
+                  .with(user(user))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.id").value(2))
+          .andExpect(
+              jsonPath("$.title")
+                  .value("Dentist")
+          )
+          .andExpect(
+              jsonPath("$.description")
+                  .value("Dental cleaning")
+          )
+          .andExpect(
+              jsonPath("$.appointmentDate")
+                  .value(appointmentDate.toString())
+          );
+
+      verify(appointmentService).complete(
+          eq(user),
+          eq(2L)
+      );
+    }
+
+    @Test
+    @DisplayName("Should cancel appointment successfully")
+    void shouldCancelAppointmentSuccessfully() throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      LocalDateTime appointmentDate =
+          LocalDateTime.now()
+              .plusDays(1)
+              .withNano(0);
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          appointmentDate
+      );
+
+      appointment.setId(3L);
+
+      when(
+          appointmentService.cancel(
+              eq(user),
+              eq(3L)
+          )
+      ).thenReturn(appointment);
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/appointments/3/cancel")
+                  .with(csrf())
+                  .with(user(user))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.id").value(3))
+          .andExpect(
+              jsonPath("$.title")
+                  .value("Doctor")
+          )
+          .andExpect(
+              jsonPath("$.description")
+                  .value("Annual checkup")
+          )
+          .andExpect(
+              jsonPath("$.appointmentDate")
+                  .value(appointmentDate.toString())
+          );
+
+      verify(appointmentService).cancel(
+          eq(user),
+          eq(3L)
+      );
+    }
+
+    @Test
+    @DisplayName("Should return 404 when appointment to confirm does not exist")
+    void shouldReturn404WhenAppointmentToConfirmDoesNotExist()
+        throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      when(
+          appointmentService.confirm(
+              eq(user),
+              eq(999L)
+          )
+      ).thenThrow(new AppointmentNotFoundException());
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/appointments/999/confirm")
+                  .with(csrf())
+                  .with(user(user))
+          )
+          .andExpect(status().isNotFound());
+
+      verify(appointmentService).confirm(
+          eq(user),
+          eq(999L)
+      );
+    }
+
+    @Test
+    @DisplayName("Should return 409 when appointment transition is invalid")
+    void shouldReturn400WhenAppointmentTransitionIsInvalid()
+        throws Exception {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      when(
+          appointmentService.confirm(
+              eq(user),
+              eq(1L)
+          )
+      ).thenThrow(
+          new BusinessRuleException(
+              "Only pending appointments can be confirmed"
+          )
+      );
+
+      // Act + Assert
+      mockMvc.perform(
+              patch("/appointments/1/confirm")
+                  .with(csrf())
+                  .with(user(user))
+          )
+          .andExpect(status().isConflict())
+          .andExpect(
+              jsonPath("$.message")
+                  .value(
+                      "Only pending appointments can be confirmed"
+                  )
+          );
+
+      verify(appointmentService).confirm(
+          eq(user),
+          eq(1L)
+      );
+    }
+
+    @Test
+    @DisplayName("Should reject unauthenticated request")
+    void shouldRejectUnauthenticatedRequest() throws Exception {
+      // Act + Assert
+      mockMvc.perform(
+              patch("/appointments/1/confirm")
+                  .with(csrf())
+          )
+          .andExpect(status().isUnauthorized());
+
+      verifyNoInteractions(appointmentService);
     }
   }
 }

@@ -144,4 +144,58 @@ public class AppointmentController {
 
     return ResponseEntity.noContent().build();
   }
+
+  /**
+   * PATCH Route to confirm an appointment.
+   */
+  @PatchMapping("/{id}/confirm")
+  public ResponseEntity<AppointmentResponse> confirm(
+      Authentication authentication,
+      @PathVariable Long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    Appointment appointment =
+        appointmentService.confirm(user, id);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment)
+    );
+  }
+
+  /**
+   * PATCH Route to cancel an appointment.
+   */
+  @PatchMapping("/{id}/cancel")
+  public ResponseEntity<AppointmentResponse> cancel(
+      Authentication authentication,
+      @PathVariable Long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    Appointment appointment =
+        appointmentService.cancel(user, id);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment)
+    );
+  }
+
+  /**
+   * PATCH Route to confirm an appointment.
+   */
+  @PatchMapping("/{id}/complete")
+  public ResponseEntity<AppointmentResponse> complete(
+      Authentication authentication,
+      @PathVariable Long id
+  ) {
+    User user = (User) authentication.getPrincipal();
+
+    Appointment appointment =
+        appointmentService.complete(user, id);
+
+    return ResponseEntity.ok(
+        AppointmentResponse.fromAppointment(appointment)
+    );
+  }
 }
