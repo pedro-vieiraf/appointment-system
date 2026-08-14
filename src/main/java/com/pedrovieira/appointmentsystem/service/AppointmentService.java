@@ -151,4 +151,40 @@ public class AppointmentService {
         pageable
     );
   }
+
+  /**
+   * Complete an appointment.
+   */
+  public Appointment complete(User user, Long appointmentId) {
+    Appointment appointment =
+        getById(user, appointmentId);
+
+    appointment.markAsCompleted();
+
+    return appointmentRepository.save(appointment);
+  }
+
+  /**
+   * Confirm an appointment.
+   */
+  public Appointment confirm(User user, Long appointmentId) {
+    Appointment appointment =
+        getById(user, appointmentId);
+
+    appointment.markAsConfirmed();
+
+    return appointmentRepository.save(appointment);
+  }
+
+  /**
+   * Cancel an appointment.
+   */
+  public Appointment cancel(User user, Long appointmentId) {
+    Appointment appointment =
+        getById(user, appointmentId);
+
+    appointment.markAsCanceled();
+
+    return appointmentRepository.save(appointment);
+  }
 }

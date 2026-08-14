@@ -2115,4 +2115,386 @@ class AppointmentServiceTest {
           .delete(any(Appointment.class));
     }
   }
+
+  @Nested
+  @DisplayName("Appointment status transitions")
+  class AppointmentStatusTransitionTests {
+
+    @Test
+    @DisplayName("Should confirm user's pending appointment")
+    void shouldConfirmUsersPendingAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.of(appointment));
+
+      when(
+          appointmentRepository.save(appointment)
+      ).thenReturn(appointment);
+
+      // Act
+      Appointment result =
+          appointmentService.confirm(user, 1L);
+
+      // Assert
+      assertEquals(
+          AppointmentStatus.CONFIRMED,
+          result.getStatus()
+      );
+
+      assertEquals(
+          AppointmentStatus.CONFIRMED,
+          appointment.getStatus()
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository
+      ).save(appointment);
+    }
+
+    @Test
+    @DisplayName("Should cancel user's confirmed appointment")
+    void shouldCancelUsersConfirmedAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      appointment.markAsConfirmed();
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.of(appointment));
+
+      when(
+          appointmentRepository.save(appointment)
+      ).thenReturn(appointment);
+
+      // Act
+      Appointment result =
+          appointmentService.cancel(user, 1L);
+
+      // Assert
+      assertEquals(
+          AppointmentStatus.CANCELLED,
+          result.getStatus()
+      );
+
+      assertEquals(
+          AppointmentStatus.CANCELLED,
+          appointment.getStatus()
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository
+      ).save(appointment);
+    }
+
+    @Test
+    @DisplayName("Should complete user's confirmed appointment")
+    void shouldCompleteUsersConfirmedAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      appointment.markAsConfirmed();
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.of(appointment));
+
+      when(
+          appointmentRepository.save(appointment)
+      ).thenReturn(appointment);
+
+      // Act
+      Appointment result =
+          appointmentService.complete(user, 1L);
+
+      // Assert
+      assertEquals(
+          AppointmentStatus.COMPLETED,
+          result.getStatus()
+      );
+
+      assertEquals(
+          AppointmentStatus.COMPLETED,
+          appointment.getStatus()
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository
+      ).save(appointment);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when appointment does not exist")
+    void shouldThrowExceptionWhenAppointmentDoesNotExist() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.empty());
+
+      // Act + Assert
+      assertThrows(
+          AppointmentNotFoundException.class,
+          () -> appointmentService.confirm(user, 1L)
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository,
+          never()
+      ).save(any(Appointment.class));
+    }
+
+    @Test
+    @DisplayName("Should not allow user to modify another user's appointment")
+    void shouldNotAllowUserToModifyAnotherUsersAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.empty());
+
+      // Act + Assert
+      assertThrows(
+          AppointmentNotFoundException.class,
+          () -> appointmentService.confirm(user, 1L)
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository,
+          never()
+      ).save(any(Appointment.class));
+    }
+
+    @Test
+    @DisplayName("Should not save appointment when confirmation transition is invalid")
+    void shouldNotSaveAppointmentWhenConfirmationTransitionIsInvalid() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      appointment.markAsConfirmed();
+
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.of(appointment));
+
+      // Act + Assert
+      assertThrows(
+          BusinessRuleException.class,
+          () -> appointmentService.confirm(user, 1L)
+      );
+
+      assertEquals(
+          AppointmentStatus.CONFIRMED,
+          appointment.getStatus()
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository,
+          never()
+      ).save(any(Appointment.class));
+    }
+
+    @Test
+    @DisplayName("Should not save appointment when cancellation transition is invalid")
+    void shouldNotSaveAppointmentWhenCancellationTransitionIsInvalid() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      // Appointment starts as PENDING.
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.of(appointment));
+
+      // Act + Assert
+      assertThrows(
+          BusinessRuleException.class,
+          () -> appointmentService.cancel(user, 1L)
+      );
+
+      assertEquals(
+          AppointmentStatus.PENDING,
+          appointment.getStatus()
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository,
+          never()
+      ).save(any(Appointment.class));
+    }
+
+    @Test
+    @DisplayName("Should not save appointment when completion transition is invalid")
+    void shouldNotSaveAppointmentWhenCompletionTransitionIsInvalid() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.setId(1L);
+
+      // Appointment starts as PENDING.
+      when(
+          appointmentRepository.findByIdAndUser(
+              user,
+              1L
+          )
+      ).thenReturn(Optional.of(appointment));
+
+      // Act + Assert
+      assertThrows(
+          BusinessRuleException.class,
+          () -> appointmentService.complete(user, 1L)
+      );
+
+      assertEquals(
+          AppointmentStatus.PENDING,
+          appointment.getStatus()
+      );
+
+      verify(
+          appointmentRepository
+      ).findByIdAndUser(user, 1L);
+
+      verify(
+          appointmentRepository,
+          never()
+      ).save(any(Appointment.class));
+    }
+  }
 }

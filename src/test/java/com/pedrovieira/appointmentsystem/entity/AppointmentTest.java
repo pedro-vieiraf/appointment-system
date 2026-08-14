@@ -1,8 +1,10 @@
 package com.pedrovieira.appointmentsystem.entity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
+import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -147,6 +149,263 @@ class AppointmentTest {
       appointment.markAsCompleted();
 
       // Assert
+      assertEquals(
+          AppointmentStatus.COMPLETED,
+          appointment.getStatus()
+      );
+    }
+
+    @Test
+    @DisplayName("Should not cancel a pending appointment")
+    void shouldNotCancelPendingAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      // Act + Assert
+      BusinessRuleException exception = assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsCanceled
+      );
+
+      assertEquals(
+          "Only confirmed appointments can be cancelled",
+          exception.getMessage()
+      );
+
+      assertEquals(
+          AppointmentStatus.PENDING,
+          appointment.getStatus()
+      );
+    }
+
+    @Test
+    @DisplayName("Should not complete a pending appointment")
+    void shouldNotCompletePendingAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      // Act + Assert
+      BusinessRuleException exception = assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsCompleted
+      );
+
+      assertEquals(
+          "Only confirmed appointments can be completed",
+          exception.getMessage()
+      );
+
+      assertEquals(
+          AppointmentStatus.PENDING,
+          appointment.getStatus()
+      );
+    }
+
+    @Test
+    @DisplayName("Should not confirm an already confirmed appointment")
+    void shouldNotConfirmAlreadyConfirmedAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.markAsConfirmed();
+
+      // Act + Assert
+      BusinessRuleException exception = assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsConfirmed
+      );
+
+      assertEquals(
+          "Only pending appointments can be confirmed",
+          exception.getMessage()
+      );
+
+      assertEquals(
+          AppointmentStatus.CONFIRMED,
+          appointment.getStatus()
+      );
+    }
+
+    @Test
+    @DisplayName("Should not cancel an already cancelled appointment")
+    void shouldNotCancelAlreadyCancelledAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.markAsConfirmed();
+      appointment.markAsCanceled();
+
+      // Act + Assert
+      BusinessRuleException exception = assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsCanceled
+      );
+
+      assertEquals(
+          "Only confirmed appointments can be cancelled",
+          exception.getMessage()
+      );
+
+      assertEquals(
+          AppointmentStatus.CANCELLED,
+          appointment.getStatus()
+      );
+    }
+
+    @Test
+    @DisplayName("Should not confirm a cancelled appointment")
+    void shouldNotConfirmCancelledAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.markAsConfirmed();
+      appointment.markAsCanceled();
+
+      // Act + Assert
+      BusinessRuleException exception = assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsConfirmed
+      );
+
+      assertEquals(
+          "Only pending appointments can be confirmed",
+          exception.getMessage()
+      );
+
+      assertEquals(
+          AppointmentStatus.CANCELLED,
+          appointment.getStatus()
+      );
+    }
+
+    @Test
+    @DisplayName("Should not complete a cancelled appointment")
+    void shouldNotCompleteCancelledAppointment() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.markAsConfirmed();
+      appointment.markAsCanceled();
+
+      // Act + Assert
+      BusinessRuleException exception = assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsCompleted
+      );
+
+      assertEquals(
+          "Only confirmed appointments can be completed",
+          exception.getMessage()
+      );
+
+      assertEquals(
+          AppointmentStatus.CANCELLED,
+          appointment.getStatus()
+      );
+    }
+
+    @Test
+    @DisplayName("Should not change a completed appointment status")
+    void shouldNotChangeCompletedAppointmentStatus() {
+      // Arrange
+      User user = new User(
+          "John Doe",
+          "john@email.com",
+          "hashed-password"
+      );
+
+      Appointment appointment = new Appointment(
+          user,
+          "Doctor",
+          "Annual checkup",
+          LocalDateTime.now().plusDays(1)
+      );
+
+      appointment.markAsConfirmed();
+      appointment.markAsCompleted();
+
+      // Act + Assert
+      assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsConfirmed
+      );
+
+      assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsCanceled
+      );
+
+      assertThrows(
+          BusinessRuleException.class,
+          appointment::markAsCompleted
+      );
+
       assertEquals(
           AppointmentStatus.COMPLETED,
           appointment.getStatus()
