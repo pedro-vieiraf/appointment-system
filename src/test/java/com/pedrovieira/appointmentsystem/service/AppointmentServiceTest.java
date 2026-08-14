@@ -480,14 +480,22 @@ class AppointmentServiceTest {
               null
           );
 
-      when(
-          appointmentRepository.findAll(
-              ArgumentMatchers.<Specification<Appointment>>any()
-          )
-      ).thenReturn(appointments);
-
       Pageable pageable =
           PageRequest.of(0, 10);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentRepository.findAll(
+              ArgumentMatchers.<Specification<Appointment>>any(),
+              eq(pageable)
+          )
+      ).thenReturn(page);
 
       // Act
       Page<Appointment> result =
@@ -498,14 +506,36 @@ class AppointmentServiceTest {
           );
 
       // Assert
-      assertEquals(2, result.getContent().size());
-      assertEquals(appointments, result);
-
-      verify(
-          appointmentRepository
-      ).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+      assertEquals(
+          appointments,
+          result.getContent()
       );
+
+      assertEquals(
+          2,
+          result.getTotalElements()
+      );
+
+      assertEquals(
+          1,
+          result.getTotalPages()
+      );
+
+      assertEquals(
+          0,
+          result.getNumber()
+      );
+
+      assertEquals(
+          10,
+          result.getSize()
+      );
+
+      verify(appointmentRepository)
+          .findAll(
+              ArgumentMatchers.<Specification<Appointment>>any(),
+              eq(pageable)
+          );
     }
 
     @Test
@@ -565,14 +595,25 @@ class AppointmentServiceTest {
           appointmentService.search(
               user,
               criteria,
-              pageable);
+              pageable
+          );
 
       // Assert
-      assertEquals(1, result.getContent().size());
-      assertEquals(appointment1, result.getContent().get(0));
+      assertEquals(
+          1,
+          result.getContent().size()
+      );
 
-      verify(appointmentRepository).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+      assertEquals(
+          appointment1,
+          result.getContent().get(0)
+      );
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
       );
     }
 
@@ -636,14 +677,25 @@ class AppointmentServiceTest {
           appointmentService.search(
               user,
               criteria,
-              pageable);
+              pageable
+          );
 
       // Assert
-      assertEquals(1, result.getContent().size());
-      assertEquals(appointments, result);
+      assertEquals(
+          appointments,
+          result.getContent()
+      );
 
-      verify(appointmentRepository).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+      assertEquals(
+          1,
+          result.getTotalElements()
+      );
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
       );
     }
 
@@ -707,14 +759,30 @@ class AppointmentServiceTest {
           appointmentService.search(
               user,
               criteria,
-              pageable);
+              pageable
+          );
 
       // Assert
-      assertEquals(1, result.getContent().size());
-      assertEquals(appointments, result);
+      assertEquals(
+          appointments,
+          result.getContent()
+      );
 
-      verify(appointmentRepository).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+      assertEquals(
+          1,
+          result.getTotalElements()
+      );
+
+      assertEquals(
+          1,
+          result.getTotalPages()
+      );
+
+      verify(
+          appointmentRepository
+      ).findAll(
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
       );
     }
 
@@ -781,14 +849,28 @@ class AppointmentServiceTest {
           appointmentService.search(
               user,
               criteria,
-              pageable);
+              pageable
+          );
 
       // Assert
-      assertEquals(1, result.getContent().size());
-      assertEquals(appointments, result);
+      assertEquals(
+          appointments,
+          result.getContent()
+      );
+
+      assertEquals(
+          1,
+          result.getTotalElements()
+      );
+
+      assertEquals(
+          1,
+          result.getTotalPages()
+      );
 
       verify(appointmentRepository).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
       );
     }
 
@@ -854,7 +936,8 @@ class AppointmentServiceTest {
       verify(
           appointmentRepository
       ).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
       );
     }
 
@@ -920,7 +1003,8 @@ class AppointmentServiceTest {
       verify(
           appointmentRepository
       ).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
       );
     }
 
@@ -989,7 +1073,8 @@ class AppointmentServiceTest {
       verify(
           appointmentRepository
       ).findAll(
-          ArgumentMatchers.<Specification<Appointment>>any()
+          ArgumentMatchers.<Specification<Appointment>>any(),
+          eq(pageable)
       );
     }
 

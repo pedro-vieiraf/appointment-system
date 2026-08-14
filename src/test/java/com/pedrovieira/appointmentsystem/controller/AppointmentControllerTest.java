@@ -1,6 +1,5 @@
 package com.pedrovieira.appointmentsystem.controller;
 
-import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -34,6 +33,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -511,8 +515,30 @@ public class AppointmentControllerTest {
               null
           );
 
-      when(appointmentService.search(user, criteria))
-          .thenReturn(appointments);
+      Pageable pageable =
+          PageRequest.of(
+              0,
+              10,
+              Sort.by(
+                  Sort.Direction.ASC,
+                  "appointmentDate"
+              )
+          );
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
 
       // Act + Assert
       mockMvc.perform(
@@ -520,34 +546,42 @@ public class AppointmentControllerTest {
                   .with(user(user))
           )
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$").isArray())
-          .andExpect(jsonPath("$.length()").value(2))
-          .andExpect(jsonPath("$[0].id").value(1))
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content.length()").value(2))
+          .andExpect(jsonPath("$.content[0].id").value(1))
           .andExpect(
-              jsonPath("$[0].title")
+              jsonPath("$.content[0].title")
                   .value("Medical appointment")
           )
           .andExpect(
-              jsonPath("$[0].description")
+              jsonPath("$.content[0].description")
                   .value("Annual checkup")
           )
-          .andExpect(jsonPath("$[1].id").value(2))
+          .andExpect(jsonPath("$.content[1].id").value(2))
           .andExpect(
-              jsonPath("$[1].title")
+              jsonPath("$.content[1].title")
                   .value("Dentist")
           )
           .andExpect(
-              jsonPath("$[1].description")
+              jsonPath("$.content[1].description")
                   .value("Dental checkup")
-          );
+          )
+          .andExpect(jsonPath("$.totalElements").value(2))
+          .andExpect(jsonPath("$.totalPages").value(1))
+          .andExpect(jsonPath("$.size").value(10))
+          .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
 
     @Test
-    @DisplayName("Should return an empty list when user has no appointments")
-    void shouldReturnEmptyListWhenUserHasNoAppointments() throws Exception {
+    @DisplayName("Should return an empty page when user has no appointments")
+    void shouldReturnEmptyPageWhenUserHasNoAppointments() throws Exception {
       // Arrange
       User user = new User(
           "John Doe",
@@ -562,8 +596,23 @@ public class AppointmentControllerTest {
               null
           );
 
-      when(appointmentService.search(user, criteria))
-          .thenReturn(List.of());
+      Pageable pageable =
+          PageRequest.of(0, 10);
+
+      Page<Appointment> emptyPage =
+          new PageImpl<>(
+              List.of(),
+              pageable,
+              0
+          );
+
+      when(
+          appointmentService.search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(emptyPage);
 
       // Act + Assert
       mockMvc.perform(
@@ -571,11 +620,19 @@ public class AppointmentControllerTest {
                   .with(user(user))
           )
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$").isArray())
-          .andExpect(jsonPath("$.length()").value(0));
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content.length()").value(0))
+          .andExpect(jsonPath("$.totalElements").value(0))
+          .andExpect(jsonPath("$.totalPages").value(0))
+          .andExpect(jsonPath("$.size").value(10))
+          .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
   }
 
@@ -650,8 +707,8 @@ public class AppointmentControllerTest {
   class SearchUser {
 
     @Test
-    @DisplayName("Should return the correct appointments by title")
-    void shouldReturnAppointmentsByTitle() throws Exception {
+    @DisplayName("Should filter appointments by title")
+    void shouldFilterAppointmentsByTitle() throws Exception {
       // Arrange
       User user = new User(
           "John Doe",
@@ -666,12 +723,16 @@ public class AppointmentControllerTest {
           LocalDateTime.now().plusDays(1)
       );
 
+      appointment1.setId(1L);
+
       Appointment appointment2 = new Appointment(
           user,
           "Dentist",
           "Dental appointment",
           LocalDateTime.now().plusDays(2)
       );
+
+      appointment2.setId(2L);
 
       List<Appointment> appointments = List.of(
           appointment1
@@ -684,8 +745,23 @@ public class AppointmentControllerTest {
               null
           );
 
-      when(appointmentService.search(user, criteria))
-          .thenReturn(appointments);
+      Pageable pageable =
+          PageRequest.of(0, 10);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
 
       // Act + Assert
       mockMvc.perform(
@@ -694,19 +770,28 @@ public class AppointmentControllerTest {
                   .param("title", "Doctor")
           )
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content.length()").value(1))
           .andExpect(
-              jsonPath("$[0].title")
+              jsonPath("$.content[0].title")
                   .value("Doctor")
-          );
+          )
+          .andExpect(jsonPath("$.totalElements").value(1))
+          .andExpect(jsonPath("$.totalPages").value(1))
+          .andExpect(jsonPath("$.size").value(10))
+          .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
 
     @Test
-    @DisplayName("Should return the correct appointments by start date")
-    void shouldReturnAppointmentsByStartDate() throws Exception {
+    @DisplayName("Should filter appointments by start date")
+    void shouldFilterAppointmentsByStartDate() throws Exception {
       // Arrange
       User user = new User(
           "John Doe",
@@ -754,8 +839,23 @@ public class AppointmentControllerTest {
               null
           );
 
-      when(appointmentService.search(user, criteria))
-          .thenReturn(appointments);
+      Pageable pageable =
+          PageRequest.of(0, 10);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
 
       // Act + Assert
       mockMvc.perform(
@@ -767,22 +867,22 @@ public class AppointmentControllerTest {
                   )
           )
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$").isArray())
-          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content.length()").value(1))
           .andExpect(
-              jsonPath("$[0].id")
+              jsonPath("$.content[0].id")
                   .value(2)
           )
           .andExpect(
-              jsonPath("$[0].title")
+              jsonPath("$.content[0].title")
                   .value("Dentist")
           )
           .andExpect(
-              jsonPath("$[0].description")
+              jsonPath("$.content[0].description")
                   .value("Dental appointment")
           )
           .andExpect(
-              jsonPath("$[0].appointmentDate")
+              jsonPath("$.content[0].appointmentDate")
                   .value(
                       org.hamcrest.Matchers.startsWith(
                           appointmentDate2
@@ -790,15 +890,23 @@ public class AppointmentControllerTest {
                               .toString()
                       )
                   )
-          );
+          )
+          .andExpect(jsonPath("$.totalElements").value(1))
+          .andExpect(jsonPath("$.totalPages").value(1))
+          .andExpect(jsonPath("$.size").value(10))
+          .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
 
     @Test
-    @DisplayName("Should return the correct appointments by end date")
-    void shouldReturnAppointmentsByEndDate() throws Exception {
+    @DisplayName("Should filter appointments by end date")
+    void shouldFilterAppointmentsByEndDate() throws Exception {
       // Arrange
       User user = new User(
           "John Doe",
@@ -847,8 +955,23 @@ public class AppointmentControllerTest {
               endDate
           );
 
-      when(appointmentService.search(user, criteria))
-          .thenReturn(appointments);
+      Pageable pageable =
+          PageRequest.of(0, 10);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
 
       // Act + Assert
       mockMvc.perform(
@@ -860,32 +983,44 @@ public class AppointmentControllerTest {
                   )
           )
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$").isArray())
-          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content.length()").value(1))
           .andExpect(
-              jsonPath("$[0].id")
+              jsonPath("$.content[0].id")
                   .value(1)
           )
           .andExpect(
-              jsonPath("$[0].title")
+              jsonPath("$.content[0].title")
                   .value("Doctor")
           )
           .andExpect(
-              jsonPath("$[0].description")
+              jsonPath("$.content[0].description")
                   .value("Annual checkup")
           )
           .andExpect(
-              jsonPath("$[0].appointmentDate")
-                  .value(appointmentDate1.toString())
-          );
+              jsonPath("$.content[0].appointmentDate")
+                  .value(
+                      org.hamcrest.Matchers.startsWith(
+                          appointmentDate1.toString()
+                      )
+                  )
+          )
+          .andExpect(jsonPath("$.totalElements").value(1))
+          .andExpect(jsonPath("$.totalPages").value(1))
+          .andExpect(jsonPath("$.size").value(10))
+          .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
 
     @Test
-    @DisplayName("Should return the correct appointments by date range")
-    void shouldReturnAppointmentsByDateRange() throws Exception {
+    @DisplayName("Should filter appointments by date range")
+    void shouldFilterAppointmentsByDateRange() throws Exception {
       // Arrange
       User user = new User(
           "John Doe",
@@ -949,8 +1084,23 @@ public class AppointmentControllerTest {
               endDate
           );
 
-      when(appointmentService.search(user, criteria))
-          .thenReturn(appointments);
+      Pageable pageable =
+          PageRequest.of(0, 10);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
 
       // Act + Assert
       mockMvc.perform(
@@ -966,32 +1116,44 @@ public class AppointmentControllerTest {
                   )
           )
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$").isArray())
-          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content.length()").value(1))
           .andExpect(
-              jsonPath("$[0].id")
+              jsonPath("$.content[0].id")
                   .value(2)
           )
           .andExpect(
-              jsonPath("$[0].title")
+              jsonPath("$.content[0].title")
                   .value("Dentist")
           )
           .andExpect(
-              jsonPath("$[0].description")
+              jsonPath("$.content[0].description")
                   .value("Inside range")
           )
           .andExpect(
-              jsonPath("$[0].appointmentDate")
-                  .value(appointmentDate2.toString())
-          );
+              jsonPath("$.content[0].appointmentDate")
+                  .value(
+                      org.hamcrest.Matchers.startsWith(
+                          appointmentDate2.toString()
+                      )
+                  )
+          )
+          .andExpect(jsonPath("$.totalElements").value(1))
+          .andExpect(jsonPath("$.totalPages").value(1))
+          .andExpect(jsonPath("$.size").value(10))
+          .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
 
     @Test
-    @DisplayName("Should return the correct appointments by title and date range")
-    void shouldReturnAppointmentsByTitleAndDateRange() throws Exception {
+    @DisplayName("Should filter appointments by title and date range")
+    void shouldFilterAppointmentsByTitleAndDateRange() throws Exception {
       // Arrange
       User user = new User(
           "John Doe",
@@ -1031,39 +1193,72 @@ public class AppointmentControllerTest {
               endDate
           );
 
-      when(appointmentService.search(user, criteria))
-          .thenReturn(appointments);
+      Pageable pageable =
+          PageRequest.of(0, 10);
+
+      Page<Appointment> page =
+          new PageImpl<>(
+              appointments,
+              pageable,
+              appointments.size()
+          );
+
+      when(
+          appointmentService.search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          )
+      ).thenReturn(page);
 
       // Act + Assert
       mockMvc.perform(
               get("/appointments")
                   .with(user(user))
                   .param("title", "Doctor")
-                  .param("startDate", startDate.toString())
-                  .param("endDate", endDate.toString())
+                  .param(
+                      "startDate",
+                      startDate.toString()
+                  )
+                  .param(
+                      "endDate",
+                      endDate.toString()
+                  )
           )
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$").isArray())
-          .andExpect(jsonPath("$", hasSize(1)))
+          .andExpect(jsonPath("$.content").isArray())
+          .andExpect(jsonPath("$.content.length()").value(1))
           .andExpect(
-              jsonPath("$[0].id")
+              jsonPath("$.content[0].id")
                   .value(1)
           )
           .andExpect(
-              jsonPath("$[0].title")
+              jsonPath("$.content[0].title")
                   .value("Doctor")
           )
           .andExpect(
-              jsonPath("$[0].description")
+              jsonPath("$.content[0].description")
                   .value("Annual checkup")
           )
           .andExpect(
-              jsonPath("$[0].appointmentDate")
-                  .value(appointmentDate.toString())
-          );
+              jsonPath("$.content[0].appointmentDate")
+                  .value(
+                      org.hamcrest.Matchers.startsWith(
+                          appointmentDate.toString()
+                      )
+                  )
+          )
+          .andExpect(jsonPath("$.totalElements").value(1))
+          .andExpect(jsonPath("$.totalPages").value(1))
+          .andExpect(jsonPath("$.size").value(10))
+          .andExpect(jsonPath("$.number").value(0));
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
 
     @Test
@@ -1114,7 +1309,11 @@ public class AppointmentControllerTest {
 
       doThrow(new InvalidAppointmentDateRangeException())
           .when(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
 
       // Act + Assert
       mockMvc.perform(
@@ -1136,7 +1335,11 @@ public class AppointmentControllerTest {
           );
 
       verify(appointmentService)
-          .search(user, criteria);
+          .search(
+              eq(user),
+              eq(criteria),
+              any(Pageable.class)
+          );
     }
   }
 
