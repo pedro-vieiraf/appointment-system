@@ -31,6 +31,7 @@ import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.security.JwtService;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -117,7 +118,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.description").value("Description"))
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(appointmentDate.toString())
+                  .value(appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
           );
     }
 
@@ -243,7 +244,7 @@ public class AppointmentControllerTest {
               jsonPath("$.appointmentDate")
                   .value(
                       org.hamcrest.Matchers.startsWith(
-                          appointmentDate.toString()
+                          appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                       )
                   )
           );
@@ -1448,7 +1449,7 @@ public class AppointmentControllerTest {
               jsonPath("$.content[0].appointmentDate")
                   .value(
                       org.hamcrest.Matchers.startsWith(
-                          appointmentDate1.toString()
+                          appointmentDate1.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                       )
                   )
           )
@@ -1581,7 +1582,7 @@ public class AppointmentControllerTest {
               jsonPath("$.content[0].appointmentDate")
                   .value(
                       org.hamcrest.Matchers.startsWith(
-                          appointmentDate2.toString()
+                          appointmentDate2.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                       )
                   )
           )
@@ -1691,7 +1692,7 @@ public class AppointmentControllerTest {
               jsonPath("$.content[0].appointmentDate")
                   .value(
                       org.hamcrest.Matchers.startsWith(
-                          appointmentDate.toString()
+                          appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                       )
                   )
           )
@@ -1847,7 +1848,7 @@ public class AppointmentControllerTest {
           .andExpect(jsonPath("$.description").value("Annual checkup"))
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(appointmentDate.toString())
+                  .value(appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
           );
 
       verify(appointmentService)
@@ -1913,7 +1914,7 @@ public class AppointmentControllerTest {
           )
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(appointmentDate.toString())
+                  .value(appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
           );
 
       verify(appointmentService)
@@ -2406,7 +2407,7 @@ public class AppointmentControllerTest {
           )
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(appointmentDate.toString())
+                  .value(appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
           );
 
       verify(appointmentService).confirm(
@@ -2464,7 +2465,7 @@ public class AppointmentControllerTest {
           )
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(appointmentDate.toString())
+                  .value(appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
           );
 
       verify(appointmentService).complete(
@@ -2522,7 +2523,7 @@ public class AppointmentControllerTest {
           )
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(appointmentDate.toString())
+                  .value(appointmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
           );
 
       verify(appointmentService).cancel(

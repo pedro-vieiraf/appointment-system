@@ -66,6 +66,13 @@ Para executar os testes automatizados:
 ./mvnw test
 ```
 
+### Coverage
+
+With the test database running, use `./mvnw verify` to generate the JaCoCo report.
+Open `target/site/jacoco/index.html` to review line and branch coverage.
+Use `./mvnw clean verify` when you need a fresh report after switching branches
+or changing the code under test.
+
 ## CI/CD
 
 O projeto utiliza GitHub Actions para:
@@ -101,7 +108,3 @@ Um agendamento nasce como `PENDING`. Use `PATCH /appointments/{id}/confirm` para
 confirmá-lo, `PATCH /appointments/{id}/cancel` para cancelar um agendamento pendente
 ou confirmado e `PATCH /appointments/{id}/complete` para concluir um agendamento
 confirmado. Transições inválidas retornam `409 Conflict`.
-
-## Próximos passos
-
-- [ ] Adicionar cobertura de testes com JaCoCo.
