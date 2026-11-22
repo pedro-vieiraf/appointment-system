@@ -108,3 +108,19 @@ Um agendamento nasce como `PENDING`. Use `PATCH /appointments/{id}/confirm` para
 confirmá-lo, `PATCH /appointments/{id}/cancel` para cancelar um agendamento pendente
 ou confirmado e `PATCH /appointments/{id}/complete` para concluir um agendamento
 confirmado. Transições inválidas retornam `409 Conflict`.
+
+## Appointment reminders
+
+Supply `reminderOffsetsMinutes` on create or update, for example `[1440, 120]`.
+Omitting the field on create uses 24 hours. On update, omission preserves the current
+settings. Send `[]` to disable reminders for the appointment.
+
+Email delivery is opt-in. Set `REMINDERS_DELIVERY_ENABLED=true`, `REMINDERS_FROM`,
+and `SPRING_MAIL_HOST` before starting the application. Set `SPRING_MAIL_PORT` and
+configure credentials and TLS using Spring Boot mail properties as required by your
+SMTP server. The sender polls PostgreSQL every minute by default
+(`REMINDERS_POLL_INTERVAL=PT1M`).
+
+The sender retries a failed submission on later polls while the appointment is confirmed
+and still in the future. If SMTP accepts a message and the database transaction fails
+before committing, a later poll may send the message again.

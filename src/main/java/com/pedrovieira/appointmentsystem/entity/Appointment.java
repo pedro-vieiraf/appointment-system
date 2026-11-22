@@ -2,7 +2,10 @@ package com.pedrovieira.appointmentsystem.entity;
 
 import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
+import com.pedrovieira.appointmentsystem.exception.appointments.InvalidReminderOffsetsException;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -12,12 +15,21 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Appointments Entity.
@@ -25,6 +37,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "appointments")
 public class Appointment {
+
+  private static final List<Integer> DEFAULT_REMINDER_OFFSETS_MINUTES = List.of(24 * 60);
 
   @Getter
   @Setter
@@ -50,6 +64,19 @@ public class Appointment {
   @Column(nullable = false)
   @Enumerated(EnumType.STRING)
   private AppointmentStatus status;
+
+  @JdbcTypeCode(SqlTypes.ARRAY)
+  @Column(name = "reminder_offsets_minutes")
+  private List<Integer> reminderOffsetsMinutes = new ArrayList<>(DEFAULT_REMINDER_OFFSETS_MINUTES);
+
+  @ElementCollection
+  @CollectionTable(
+      name = "appointment_reminder_schedule",
+      joinColumns = @JoinColumn(name = "appointment_id")
+  )
+  @MapKeyColumn(name = "offset_minutes")
+  @Column(name = "scheduled_at", nullable = false)
+  private Map<Integer, LocalDateTime> reminderSchedule = new HashMap<>();
 
   @Column(nullable = false)
   private LocalDateTime createdAt;
@@ -112,6 +139,53 @@ public class Appointment {
   }
 
   /**
+   * Returns the configured offsets, using the default for appointments created before reminders.
+   */
+  public List<Integer> getReminderOffsetsMinutes() {
+    return reminderOffsetsMinutes == null
+        ? DEFAULT_REMINDER_OFFSETS_MINUTES : List.copyOf(reminderOffsetsMinutes);
+  }
+
+  /**
+   * Replaces the reminder offsets. An empty list disables reminders for this appointment.
+   */
+  public void replaceReminderOffsets(List<Integer> offsets) {
+    Set<Integer> seen = new HashSet<>();
+    for (Integer offset : offsets) {
+      if (offset == null || offset <= 0 || !seen.add(offset)) {
+        throw new InvalidReminderOffsetsException();
+      }
+    }
+    reminderOffsetsMinutes = new ArrayList<>(offsets);
+  }
+
+  /**
+   * Plans reminders at confirmation or after a schedule change. Keeps earlier deadlines
+   * for unchanged offsets so an overdue reminder can still be delivered.
+   */
+  public void refreshReminderSchedule(
+      LocalDateTime now, boolean appointmentDateChanged, List<Integer> previousOffsets
+  ) {
+    if (appointmentDateChanged) {
+      reminderSchedule.clear();
+    }
+
+    if (status != AppointmentStatus.CONFIRMED || !appointmentDate.isAfter(now)) {
+      return;
+    }
+
+    List<Integer> offsets = getReminderOffsetsMinutes();
+    reminderSchedule.keySet().retainAll(offsets);
+    for (Integer offset : offsets) {
+      LocalDateTime scheduledAt = appointmentDate.minusMinutes(offset);
+      if ((appointmentDateChanged || !previousOffsets.contains(offset))
+          && !scheduledAt.isBefore(now)) {
+        reminderSchedule.putIfAbsent(offset, scheduledAt);
+      }
+    }
+  }
+
+  /**
    * Method to markAsConfirmed an appointment.
    */
   public void markAsConfirmed() {
@@ -131,6 +205,7 @@ public class Appointment {
       throw new BusinessRuleException("Only pending or confirmed appointments can be cancelled");
     }
     status = AppointmentStatus.CANCELLED;
+    reminderSchedule.clear();
   }
 
   /**
@@ -141,6 +216,7 @@ public class Appointment {
       throw new BusinessRuleException("Only confirmed appointments can be completed");
     }
     status = AppointmentStatus.COMPLETED;
+    reminderSchedule.clear();
   }
 
   @PrePersist
