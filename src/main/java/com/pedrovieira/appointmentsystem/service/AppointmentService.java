@@ -66,7 +66,7 @@ public class AppointmentService {
    * Get Appointments by ID and User.
    */
   public Appointment getById(User user, Long id) {
-    Optional<Appointment> appointment = appointmentRepository.findByIdAndUser(user, id);
+    Optional<Appointment> appointment = appointmentRepository.findByUserAndId(user, id);
 
     if (appointment.isEmpty()) {
       throw new AppointmentNotFoundException();

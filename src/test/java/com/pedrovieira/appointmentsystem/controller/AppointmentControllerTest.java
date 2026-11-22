@@ -1980,7 +1980,7 @@ public class AppointmentControllerTest {
           )
           .andExpect(
               jsonPath("$.appointmentDate")
-                  .value(updatedDate.toString())
+                  .value(updatedDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
           );
 
       verify(appointmentService)
