@@ -9,6 +9,9 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DisplayName("Appointment Entity Tests")
 class AppointmentTest {
@@ -93,6 +96,27 @@ class AppointmentTest {
           appointmentDate,
           appointment.getAppointmentDate()
       );
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = "   ")
+    @DisplayName("Should reject an appointment without a title")
+    void shouldRejectAppointmentWithoutTitle(String title) {
+      User user = new User("John Doe", "john@email.com", "hashed-password");
+      LocalDateTime appointmentDate = LocalDateTime.of(2026, 8, 10, 10, 30);
+
+      assertThrows(IllegalArgumentException.class,
+          () -> new Appointment(user, title, appointmentDate));
+    }
+
+    @Test
+    @DisplayName("Should reject an appointment without a date")
+    void shouldRejectAppointmentWithoutDate() {
+      User user = new User("John Doe", "john@email.com", "hashed-password");
+
+      assertThrows(IllegalArgumentException.class,
+          () -> new Appointment(user, "Dentist", null));
     }
   }
 

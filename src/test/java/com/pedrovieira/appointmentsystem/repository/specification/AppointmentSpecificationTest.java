@@ -2,6 +2,7 @@ package com.pedrovieira.appointmentsystem.repository.specification;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -177,6 +178,32 @@ public class AppointmentSpecificationTest {
               titlePath,
               "%doctor%"
           );
+    }
+
+    @Test
+    @DisplayName("Should ignore a blank title and retain user and date filters")
+    void shouldIgnoreBlankTitleAndRetainUserAndDateFilters() {
+      User user = new User("John Doe", "john@email.com", "hashed-password");
+      LocalDateTime startDate = LocalDateTime.of(2026, 8, 10, 10, 30);
+      AppointmentSearchCriteria criteria = new AppointmentSearchCriteria("   ", startDate, null);
+
+      CriteriaBuilder builder = mock(CriteriaBuilder.class);
+      CriteriaQuery<Appointment> query = mock(CriteriaQuery.class);
+      Root<Appointment> root = mock(Root.class);
+      Path<User> userPath = mock(Path.class);
+      Path<LocalDateTime> datePath = mock(Path.class);
+      Predicate userPredicate = mock(Predicate.class);
+      Predicate startDatePredicate = mock(Predicate.class);
+
+      when(root.<User>get("user")).thenReturn(userPath);
+      when(root.<LocalDateTime>get("appointmentDate")).thenReturn(datePath);
+      when(builder.equal(userPath, user)).thenReturn(userPredicate);
+      when(builder.greaterThanOrEqualTo(datePath, startDate)).thenReturn(startDatePredicate);
+
+      AppointmentSpecification.withFilters(user, criteria).toPredicate(root, query, builder);
+
+      verify(builder).and(new Predicate[]{userPredicate, startDatePredicate});
+      verify(root, never()).get("title");
     }
   }
 
