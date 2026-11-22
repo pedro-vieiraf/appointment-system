@@ -4,6 +4,7 @@ import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConfl
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
+import com.pedrovieira.appointmentsystem.exception.appointments.InvalidReminderOffsetsException;
 import com.pedrovieira.appointmentsystem.exception.users.EmailAlreadyExistsException;
 import com.pedrovieira.appointmentsystem.exception.users.EmailNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsException;
@@ -202,6 +203,18 @@ public class GlobalExceptionHandler {
         exception.getMessage(),
         request
     );
+  }
+
+  /**
+   * Exception handler for invalid reminder settings.
+   */
+  @ExceptionHandler(InvalidReminderOffsetsException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleInvalidReminderOffsets(
+      InvalidReminderOffsetsException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
   }
 
   private ErrorResponse createErrorResponse(

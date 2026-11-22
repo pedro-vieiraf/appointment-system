@@ -14,12 +14,14 @@ import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Appointments service.
@@ -51,15 +53,7 @@ public class AppointmentService {
       );
     }
 
-    Appointment appointment =
-        new Appointment(
-            user,
-            request.title(),
-            request.description(),
-            request.appointmentDate()
-        );
-
-    return appointmentRepository.save(appointment);
+    return appointmentRepository.save(request.toEntity(user));
   }
 
   /**
@@ -78,6 +72,7 @@ public class AppointmentService {
   /**
    * Update Appointment.
    */
+  @Transactional
   public Appointment update(
       User user,
       Long id,
@@ -105,6 +100,11 @@ public class AppointmentService {
       );
     }
 
+    final List<Integer> previousOffsets = appointment.getReminderOffsetsMinutes();
+    if (request.reminderOffsetsMinutes() != null) {
+      appointment.replaceReminderOffsets(request.reminderOffsetsMinutes());
+    }
+
     if (request.title() != null) {
       appointment.setTitle(request.title());
     }
@@ -113,8 +113,15 @@ public class AppointmentService {
       appointment.setDescription(request.description());
     }
 
-    if (request.appointmentDate() != null) {
+    boolean appointmentDateChanged = request.appointmentDate() != null
+        && !request.appointmentDate().equals(appointment.getAppointmentDate());
+    if (appointmentDateChanged) {
       appointment.setAppointmentDate(request.appointmentDate());
+    }
+
+    if (appointmentDateChanged || request.reminderOffsetsMinutes() != null) {
+      appointment.refreshReminderSchedule(
+          LocalDateTime.now(clock), appointmentDateChanged, previousOffsets);
     }
 
     return appointmentRepository.save(appointment);
@@ -155,6 +162,7 @@ public class AppointmentService {
   /**
    * Complete an appointment.
    */
+  @Transactional
   public Appointment complete(User user, Long appointmentId) {
     Appointment appointment =
         getById(user, appointmentId);
@@ -167,11 +175,13 @@ public class AppointmentService {
   /**
    * Confirm an appointment.
    */
+  @Transactional
   public Appointment confirm(User user, Long appointmentId) {
     Appointment appointment =
         getById(user, appointmentId);
 
     appointment.markAsConfirmed();
+    appointment.refreshReminderSchedule(LocalDateTime.now(clock), false, List.of());
 
     return appointmentRepository.save(appointment);
   }
@@ -179,6 +189,7 @@ public class AppointmentService {
   /**
    * Cancel an appointment.
    */
+  @Transactional
   public Appointment cancel(User user, Long appointmentId) {
     Appointment appointment =
         getById(user, appointmentId);
