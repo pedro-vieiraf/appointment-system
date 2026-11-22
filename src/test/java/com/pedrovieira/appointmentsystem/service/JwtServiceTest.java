@@ -102,6 +102,21 @@ public class JwtServiceTest {
   }
 
   @Test
+  void shouldAcceptValidSignedToken() {
+    User user = new User("User Resu", "user@email.com", "superstrongpassword");
+    user.setId(1L);
+
+    String token = jwtService.generateToken(user);
+
+    assertTrue(jwtService.isValidToken(token));
+  }
+
+  @Test
+  void shouldRejectMalformedToken() {
+    assertFalse(jwtService.isValidToken("not-a-jwt"));
+  }
+
+  @Test
   public void shouldReturnFalseForExpiredToken() {
     // Arrange
     Clock pastClock = Clock.fixed(

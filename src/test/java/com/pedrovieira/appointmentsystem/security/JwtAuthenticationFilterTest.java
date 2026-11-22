@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.pedrovieira.appointmentsystem.entity.User;
@@ -118,6 +119,20 @@ public class JwtAuthenticationFilterTest {
     // Assert
     verify(filterChain)
         .doFilter(request, response);
+  }
+
+  @Test
+  void shouldIgnoreAuthorizationHeaderWithoutBearerScheme() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("Authorization", "Basic dXNlcjpwYXNz");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(request, response, chain);
+
+    assertNull(SecurityContextHolder.getContext().getAuthentication());
+    verifyNoInteractions(jwtService, userRepository);
+    verify(chain).doFilter(request, response);
   }
 
   @Test
