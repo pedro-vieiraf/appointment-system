@@ -6,6 +6,7 @@ import com.pedrovieira.appointmentsystem.dto.response.UserResponse;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.service.UserService;
 import com.pedrovieira.appointmentsystem.validation.OrderedValidation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Users Routes Controller.
  */
 @RestController
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 @RequestMapping(value = "/users")
 public class UserController {
@@ -69,4 +71,3 @@ public class UserController {
     return ResponseEntity.noContent().build();
   }
 }
-

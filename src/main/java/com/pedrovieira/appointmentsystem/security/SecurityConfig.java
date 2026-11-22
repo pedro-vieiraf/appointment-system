@@ -1,7 +1,9 @@
 package com.pedrovieira.appointmentsystem.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,7 +23,8 @@ public class SecurityConfig {
    */
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http,
-      JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+      JwtAuthenticationFilter jwtAuthenticationFilter,
+      @Value("${springdoc.api-docs.enabled:false}") boolean apiDocsEnabled) throws Exception {
     http
         .csrf(AbstractHttpConfigurer::disable)
         .formLogin(AbstractHttpConfigurer::disable)
@@ -30,10 +33,15 @@ public class SecurityConfig {
         .sessionManagement(session ->
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         )
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/auth/**").permitAll()
-            .anyRequest().authenticated()
-        )
+        .authorizeHttpRequests(auth -> {
+          auth.requestMatchers("/auth/**").permitAll();
+          if (apiDocsEnabled) {
+            auth.requestMatchers(HttpMethod.GET,
+                "/v3/api-docs", "/v3/api-docs.yaml", "/v3/api-docs/swagger-config",
+                "/swagger-ui.html", "/swagger-ui/**").permitAll();
+          }
+          auth.anyRequest().authenticated();
+        })
         .addFilterBefore(
             jwtAuthenticationFilter,
             UsernamePasswordAuthenticationFilter.class
