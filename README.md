@@ -74,10 +74,34 @@ O projeto utiliza GitHub Actions para:
 - Validar o build da aplicação;
 - Garantir que Pull Requests estejam funcionando corretamente antes do merge.
 
+## Explore a API no Swagger
+
+Com o PostgreSQL disponível em `localhost:5432` e o banco `appointment_system` criado, inicie
+a aplicação com o perfil de desenvolvimento:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Especificação OpenAPI: `http://localhost:8080/v3/api-docs`
+
+A configuração padrão desabilita a documentação. O perfil `dev` habilita a interface e
+a especificação sem exigir login para consultá-las.
+
+1. Crie uma conta com `POST /auth/register` e faça login com `POST /auth/login`.
+2. Copie o valor de `accessToken` e cole-o em **Authorize** no Swagger UI. A interface
+   envia o cabeçalho `Authorization: Bearer <token>`.
+3. Experimente `GET /appointments`. Use `title` para buscar por parte do título e
+   `startDate` e `endDate` para limitar o período. As datas são inclusivas e devem
+   incluir a hora local, por exemplo `2026-12-01T09:00:00`.
+   A primeira página é `page=0`. O padrão é `size=10` e `sort=appointmentDate,asc`.
+
+Um agendamento nasce como `PENDING`. Use `PATCH /appointments/{id}/confirm` para
+confirmá-lo, `PATCH /appointments/{id}/cancel` para cancelar um agendamento pendente
+ou confirmado e `PATCH /appointments/{id}/complete` para concluir um agendamento
+confirmado. Transições inválidas retornam `409 Conflict`.
+
 ## Próximos passos
 
-- [ ] Implementar gerenciamento de usuários;
-- [ ] Implementar autenticação e autorização;
-- [ ] Criar gerenciamento de agendamentos;
-- [ ] Adicionar documentação OpenAPI;
 - [ ] Adicionar cobertura de testes com JaCoCo.
