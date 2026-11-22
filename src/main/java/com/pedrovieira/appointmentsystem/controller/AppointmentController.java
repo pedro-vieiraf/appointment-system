@@ -6,10 +6,14 @@ import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.dto.response.AppointmentResponse;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.exception.ErrorResponse;
 import com.pedrovieira.appointmentsystem.service.AppointmentService;
 import com.pedrovieira.appointmentsystem.validation.OrderedValidation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
@@ -48,6 +52,17 @@ public class AppointmentController {
    * POST Route that will create a new appointment.
    */
   @PostMapping
+  @ApiResponse(responseCode = "201", description = "Appointment created",
+      useReturnTypeSchema = true)
+  @ApiResponse(responseCode = "400", description = "Invalid or malformed request body",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
+  @ApiResponse(responseCode = "409",
+      description = "Appointment date is in the past or conflicts with another appointment",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> create(
       Authentication authentication,
       @Validated(OrderedValidation.class)
@@ -65,6 +80,13 @@ public class AppointmentController {
    * GET Route that will get the list of appointment with filtering function.
    */
   @GetMapping
+  @ApiResponse(responseCode = "200", description = "Page of matching appointments",
+      useReturnTypeSchema = true)
+  @ApiResponse(responseCode = "400", description = "Invalid date range",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
   @Operation(summary = "List the authenticated user's appointments")
   public ResponseEntity<Page<AppointmentResponse>> getAll(
       Authentication authentication,
@@ -108,6 +130,14 @@ public class AppointmentController {
    * GET by ID Route that will get the specific appointment.
    */
   @GetMapping("/{id}")
+  @ApiResponse(responseCode = "200", description = "Appointment found",
+      useReturnTypeSchema = true)
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
+  @ApiResponse(responseCode = "404",
+      description = "Appointment does not exist for the authenticated user",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> getById(
       Authentication authentication,
       @PathVariable long id
@@ -125,6 +155,22 @@ public class AppointmentController {
    * PATCH Route to update appointments.
    */
   @PatchMapping("/{id}")
+  @ApiResponse(responseCode = "200", description = "Appointment updated",
+      useReturnTypeSchema = true)
+  @ApiResponse(responseCode = "400",
+      description = "Invalid or malformed request body, or appointment date is in the past",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
+  @ApiResponse(responseCode = "404",
+      description = "Appointment does not exist for the authenticated user",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "409",
+      description = "Appointment date conflicts with another appointment",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> update(
       Authentication authentication,
       @PathVariable long id,
@@ -144,6 +190,14 @@ public class AppointmentController {
    * DELETE Route to delete appointments.
    */
   @DeleteMapping("/{id}")
+  @ApiResponse(responseCode = "204", description = "Appointment deleted",
+      content = @Content)
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
+  @ApiResponse(responseCode = "404",
+      description = "Appointment does not exist for the authenticated user",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<Void> delete(
       Authentication authentication,
       @PathVariable long id
@@ -159,6 +213,18 @@ public class AppointmentController {
    * PATCH Route to confirm an appointment.
    */
   @PatchMapping("/{id}/confirm")
+  @Operation(description = "Changes PENDING to CONFIRMED.")
+  @ApiResponse(responseCode = "200", description = "Appointment status updated",
+      useReturnTypeSchema = true)
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
+  @ApiResponse(responseCode = "404",
+      description = "Appointment does not exist for the authenticated user",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "409", description = "Appointment is not pending",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> confirm(
       Authentication authentication,
       @PathVariable Long id
@@ -177,6 +243,18 @@ public class AppointmentController {
    * PATCH Route to cancel an appointment.
    */
   @PatchMapping("/{id}/cancel")
+  @Operation(description = "Changes PENDING or CONFIRMED to CANCELLED.")
+  @ApiResponse(responseCode = "200", description = "Appointment status updated",
+      useReturnTypeSchema = true)
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
+  @ApiResponse(responseCode = "404",
+      description = "Appointment does not exist for the authenticated user",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "409", description = "Appointment is neither pending nor confirmed",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> cancel(
       Authentication authentication,
       @PathVariable Long id
@@ -195,6 +273,18 @@ public class AppointmentController {
    * PATCH Route to confirm an appointment.
    */
   @PatchMapping("/{id}/complete")
+  @Operation(description = "Changes CONFIRMED to COMPLETED.")
+  @ApiResponse(responseCode = "200", description = "Appointment status updated",
+      useReturnTypeSchema = true)
+  @ApiResponse(responseCode = "403", description = "Authentication is required",
+      content = @Content)
+  @ApiResponse(responseCode = "404",
+      description = "Appointment does not exist for the authenticated user",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "409", description = "Appointment is not confirmed",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> complete(
       Authentication authentication,
       @PathVariable Long id
