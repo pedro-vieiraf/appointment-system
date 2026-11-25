@@ -143,3 +143,25 @@ WHERE status <> 'CANCELLED'
 GROUP BY user_id, appointment_date
 HAVING COUNT(*) > 1;
 ```
+
+## Weekly availability preview
+
+Use the authenticated `PUT /users/me/availability` endpoint to replace your weekly schedule.
+For example:
+
+```json
+{
+  "timeZone": "America/Sao_Paulo",
+  "durationMinutes": 45,
+  "windows": [
+    {"dayOfWeek": "MONDAY", "start": "10:00", "end": "12:00"},
+    {"dayOfWeek": "MONDAY", "start": "13:00", "end": "18:00"}
+  ]
+}
+```
+
+A weekday with no windows has no candidates. Use `GET /users/me/availability` to read
+the schedule and `GET /users/me/availability/candidate-slots?date=2030-01-07` to preview
+future intervals that fit fully within a window. The date uses the configured time zone,
+and the response contains UTC instants. The preview does not account for existing
+appointments and is not a public booking endpoint.
