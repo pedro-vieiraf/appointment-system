@@ -168,7 +168,7 @@ public class AppointmentController {
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   @ApiResponse(responseCode = "409",
-      description = "Appointment date conflicts with another appointment",
+      description = "The requested slot is occupied or the appointment changed concurrently",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> update(
@@ -198,6 +198,9 @@ public class AppointmentController {
       description = "Appointment does not exist for the authenticated user",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(responseCode = "409", description = "Appointment changed concurrently",
+      content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<Void> delete(
       Authentication authentication,
       @PathVariable long id
@@ -222,7 +225,8 @@ public class AppointmentController {
       description = "Appointment does not exist for the authenticated user",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
-  @ApiResponse(responseCode = "409", description = "Appointment is not pending",
+  @ApiResponse(responseCode = "409",
+      description = "Appointment is not pending or changed concurrently",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> confirm(
@@ -252,7 +256,8 @@ public class AppointmentController {
       description = "Appointment does not exist for the authenticated user",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
-  @ApiResponse(responseCode = "409", description = "Appointment is neither pending nor confirmed",
+  @ApiResponse(responseCode = "409",
+      description = "Appointment cannot be cancelled or changed concurrently",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> cancel(
@@ -282,7 +287,8 @@ public class AppointmentController {
       description = "Appointment does not exist for the authenticated user",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
-  @ApiResponse(responseCode = "409", description = "Appointment is not confirmed",
+  @ApiResponse(responseCode = "409",
+      description = "Appointment is not confirmed or changed concurrently",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> complete(
