@@ -5,6 +5,7 @@ import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
@@ -40,13 +41,14 @@ public class AppointmentService {
       User user,
       AppointmentRequest request
   ) {
-    if (request.appointmentDate().isBefore(LocalDateTime.now(clock))) {
+    if (!request.appointmentDate().isAfter(LocalDateTime.now(clock))) {
       throw new BusinessRuleException("Appointment date is before current date");
     }
 
-    if (appointmentRepository.existsByUserAndAppointmentDate(
+    if (appointmentRepository.existsByUserAndAppointmentDateAndStatusNot(
         user,
-        request.appointmentDate()
+        request.appointmentDate(),
+        AppointmentStatus.CANCELLED
     )) {
       throw new BusinessRuleException(
           "User already has an appointment at this time"
@@ -79,9 +81,10 @@ public class AppointmentService {
       UpdateAppointmentRequest request
   ) {
     Appointment appointment = getById(user, id);
+    final LocalDateTime now = LocalDateTime.now(clock);
 
     if (request.appointmentDate() != null
-        && request.appointmentDate().isBefore(LocalDateTime.now())) {
+        && !request.appointmentDate().isAfter(now)) {
 
       throw new AppointmentDateInPastException(
           "Appointment date must be in the future."
@@ -89,10 +92,12 @@ public class AppointmentService {
     }
 
     if (request.appointmentDate() != null
-        && appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
+        && appointment.getStatus() != AppointmentStatus.CANCELLED
+        && appointmentRepository.existsByUserAndAppointmentDateAndIdNotAndStatusNot(
         user,
         request.appointmentDate(),
-        id
+        id,
+        AppointmentStatus.CANCELLED
     )) {
 
       throw new AppointmentConflictException(
@@ -121,7 +126,7 @@ public class AppointmentService {
 
     if (appointmentDateChanged || request.reminderOffsetsMinutes() != null) {
       appointment.refreshReminderSchedule(
-          LocalDateTime.now(clock), appointmentDateChanged, previousOffsets);
+          now, appointmentDateChanged, previousOffsets);
     }
 
     return appointmentRepository.save(appointment);
@@ -130,6 +135,7 @@ public class AppointmentService {
   /**
    * Delete Appointment.
    */
+  @Transactional
   public void delete(User user, Long id) {
     Appointment appointment = getById(user, id);
 

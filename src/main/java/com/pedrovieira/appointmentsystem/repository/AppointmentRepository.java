@@ -2,6 +2,7 @@ package com.pedrovieira.appointmentsystem.repository;
 
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,7 +20,11 @@ public interface AppointmentRepository
   /**
    * Verify if time is taken to new appointments.
    */
-  boolean existsByUserAndAppointmentDate(User attr0, LocalDateTime attr1);
+  boolean existsByUserAndAppointmentDateAndStatusNot(
+      User user,
+      LocalDateTime appointmentDate,
+      AppointmentStatus excludedStatus
+  );
 
   /**
    * Get by ID by user.
@@ -29,9 +34,10 @@ public interface AppointmentRepository
   /**
    * Verify if another appointment exists at the given time.
    */
-  boolean existsByUserAndAppointmentDateAndIdNot(
+  boolean existsByUserAndAppointmentDateAndIdNotAndStatusNot(
       User user,
       LocalDateTime appointmentDate,
-      Long id
+      Long id,
+      AppointmentStatus excludedStatus
   );
 }

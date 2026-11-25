@@ -124,3 +124,22 @@ SMTP server. The sender polls PostgreSQL every minute by default
 The sender retries a failed submission on later polls while the appointment is confirmed
 and still in the future. If SMTP accepts a message and the database transaction fails
 before committing, a later poll may send the message again.
+
+## Appointment slot conflicts
+
+An account can have one non-cancelled appointment per exact date and time.
+Cancelling an appointment releases its slot and preserves its record. Creation and
+rescheduling return `409 Conflict` when another appointment already occupies the slot.
+
+On startup, the application creates the PostgreSQL slot index after Hibernate updates
+the tables. If an older database already contains conflicting appointments, startup
+fails and leaves the records intact. Review the existing records before upgrading.
+This query finds the conflicts:
+
+```sql
+SELECT user_id, appointment_date, COUNT(*)
+FROM appointments
+WHERE status <> 'CANCELLED'
+GROUP BY user_id, appointment_date
+HAVING COUNT(*) > 1;
+```

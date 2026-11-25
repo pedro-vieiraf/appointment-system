@@ -222,9 +222,10 @@ class AppointmentServiceTest {
       );
 
       when(
-          appointmentRepository.existsByUserAndAppointmentDate(
+          appointmentRepository.existsByUserAndAppointmentDateAndStatusNot(
               user,
-              request.appointmentDate()
+              request.appointmentDate(),
+              AppointmentStatus.CANCELLED
           )
       )
           .thenReturn(true);
@@ -1843,10 +1844,11 @@ class AppointmentServiceTest {
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
 
-      when(appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
+      when(appointmentRepository.existsByUserAndAppointmentDateAndIdNotAndStatusNot(
           user,
           request.appointmentDate(),
-          appointment.getId()
+          appointment.getId(),
+              AppointmentStatus.CANCELLED
       )).thenReturn(true);
 
       // Act + Assert
@@ -1866,8 +1868,9 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .existsByUserAndAppointmentDateAndIdNot(user, request.appointmentDate(),
-              appointment.getId());
+          .existsByUserAndAppointmentDateAndIdNotAndStatusNot(user, request.appointmentDate(),
+              appointment.getId(),
+              AppointmentStatus.CANCELLED);
 
       verify(appointmentRepository, never())
           .save(any(Appointment.class));
@@ -1887,7 +1890,7 @@ class AppointmentServiceTest {
           LocalDateTime.now().plusDays(1);
 
       LocalDateTime pastDate =
-          LocalDateTime.now().minusDays(1);
+          LocalDateTime.now(clock).minusDays(1);
 
       Appointment appointment = new Appointment(
           user,
@@ -1965,10 +1968,11 @@ class AppointmentServiceTest {
       )).thenReturn(Optional.of(appointment));
 
       when(
-          appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
+          appointmentRepository.existsByUserAndAppointmentDateAndIdNotAndStatusNot(
               user,
               appointmentDate,
-              appointment.getId()
+              appointment.getId(),
+              AppointmentStatus.CANCELLED
           )
       ).thenReturn(false);
 
@@ -1991,10 +1995,11 @@ class AppointmentServiceTest {
           .findByUserAndId(user, appointment.getId());
 
       verify(appointmentRepository)
-          .existsByUserAndAppointmentDateAndIdNot(
+          .existsByUserAndAppointmentDateAndIdNotAndStatusNot(
               user,
               appointmentDate,
-              appointment.getId()
+              appointment.getId(),
+              AppointmentStatus.CANCELLED
           );
 
       verify(appointmentRepository)
