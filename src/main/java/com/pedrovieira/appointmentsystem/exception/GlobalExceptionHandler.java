@@ -217,6 +217,17 @@ public class GlobalExceptionHandler {
     return createErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
   }
 
+  /**
+   * Maps invalid weekly working hours to a bad request.
+   */
+  @ExceptionHandler(InvalidAvailabilityException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleInvalidAvailability(
+      InvalidAvailabilityException exception, HttpServletRequest request
+  ) {
+    return createErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+  }
+
   private ErrorResponse createErrorResponse(
       HttpStatus status,
       String message,
