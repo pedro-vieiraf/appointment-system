@@ -3,6 +3,7 @@ package com.pedrovieira.appointmentsystem.dto.response;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * DTO for Appointment Response.
@@ -12,7 +13,8 @@ public record AppointmentResponse(
     String title,
     String description,
     LocalDateTime appointmentDate,
-    AppointmentStatus status
+    AppointmentStatus status,
+    List<Integer> reminderOffsetsMinutes
 ) {
 
   /**
@@ -26,7 +28,8 @@ public record AppointmentResponse(
         appointment.getTitle(),
         appointment.getDescription(),
         appointment.getAppointmentDate(),
-        appointment.getStatus()
+        appointment.getStatus(),
+        appointment.getReminderOffsetsMinutes()
     );
   }
 }

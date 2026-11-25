@@ -268,7 +268,7 @@ class AppointmentServiceTest {
 
       appointment1.setId(1L);
 
-      when(appointmentRepository.findByIdAndUser(user, appointment1.getId()))
+      when(appointmentRepository.findByUserAndId(user, appointment1.getId()))
           .thenReturn(Optional.of(appointment1));
 
       // Act
@@ -277,7 +277,7 @@ class AppointmentServiceTest {
       // Assert
       assertEquals(appointment1, response);
 
-      verify(appointmentRepository).findByIdAndUser(user, appointment1.getId());
+      verify(appointmentRepository).findByUserAndId(user, appointment1.getId());
     }
 
     @Test
@@ -298,7 +298,7 @@ class AppointmentServiceTest {
 
       appointment1.setId(1L);
 
-      when(appointmentRepository.findByIdAndUser(user, appointment1.getId()))
+      when(appointmentRepository.findByUserAndId(user, appointment1.getId()))
           .thenReturn(Optional.empty());
 
       // Act + Assert
@@ -314,7 +314,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointment1.getId());
+          .findByUserAndId(user, appointment1.getId());
     }
 
     @Test
@@ -343,7 +343,7 @@ class AppointmentServiceTest {
       appointment.setId(1L);
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               authenticatedUser,
               appointment.getId()
           )
@@ -365,7 +365,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(
+          .findByUserAndId(
               authenticatedUser,
               appointment.getId()
           );
@@ -1480,7 +1480,7 @@ class AppointmentServiceTest {
               null
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -1513,7 +1513,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointment.getId());
+          .findByUserAndId(user, appointment.getId());
 
       verify(appointmentRepository)
           .save(appointment);
@@ -1550,7 +1550,7 @@ class AppointmentServiceTest {
               null
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -1583,7 +1583,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointment.getId());
+          .findByUserAndId(user, appointment.getId());
 
       verify(appointmentRepository)
           .save(appointment);
@@ -1625,7 +1625,7 @@ class AppointmentServiceTest {
               updatedDate
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -1658,7 +1658,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointment.getId());
+          .findByUserAndId(user, appointment.getId());
 
       verify(appointmentRepository)
           .save(appointment);
@@ -1683,7 +1683,7 @@ class AppointmentServiceTest {
               null
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointmentId
       )).thenReturn(Optional.empty());
@@ -1705,7 +1705,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointmentId);
+          .findByUserAndId(user, appointmentId);
 
       verify(appointmentRepository, never())
           .save(any());
@@ -1730,7 +1730,7 @@ class AppointmentServiceTest {
               null
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointmentId
       )).thenReturn(Optional.empty());
@@ -1752,7 +1752,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointmentId);
+          .findByUserAndId(user, appointmentId);
 
       verify(appointmentRepository, never())
           .save(any());
@@ -1784,7 +1784,7 @@ class AppointmentServiceTest {
               appointment.getAppointmentDate()
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -1838,7 +1838,7 @@ class AppointmentServiceTest {
               conflictingDate
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -1905,7 +1905,7 @@ class AppointmentServiceTest {
               pastDate
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -1959,7 +1959,7 @@ class AppointmentServiceTest {
               appointmentDate
           );
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -1988,7 +1988,7 @@ class AppointmentServiceTest {
       assertEquals(appointmentDate, response.getAppointmentDate());
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointment.getId());
+          .findByUserAndId(user, appointment.getId());
 
       verify(appointmentRepository)
           .existsByUserAndAppointmentDateAndIdNot(
@@ -2025,7 +2025,7 @@ class AppointmentServiceTest {
 
       appointment.setId(1L);
 
-      when(appointmentRepository.findByIdAndUser(
+      when(appointmentRepository.findByUserAndId(
           user,
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
@@ -2035,7 +2035,7 @@ class AppointmentServiceTest {
 
       // Assert
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointment.getId());
+          .findByUserAndId(user, appointment.getId());
 
       verify(appointmentRepository)
           .delete(appointment);
@@ -2053,7 +2053,7 @@ class AppointmentServiceTest {
 
       Long appointmentId = 1L;
 
-      when(appointmentRepository.findByIdAndUser(user, appointmentId))
+      when(appointmentRepository.findByUserAndId(user, appointmentId))
           .thenReturn(Optional.empty());
 
       // Act + Assert
@@ -2072,7 +2072,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointmentId);
+          .findByUserAndId(user, appointmentId);
 
       verify(appointmentRepository, never())
           .delete(any(Appointment.class));
@@ -2090,7 +2090,7 @@ class AppointmentServiceTest {
 
       Long appointmentId = 1L;
 
-      when(appointmentRepository.findByIdAndUser(user, appointmentId))
+      when(appointmentRepository.findByUserAndId(user, appointmentId))
           .thenReturn(Optional.empty());
 
       // Act + Assert
@@ -2109,7 +2109,7 @@ class AppointmentServiceTest {
       );
 
       verify(appointmentRepository)
-          .findByIdAndUser(user, appointmentId);
+          .findByUserAndId(user, appointmentId);
 
       verify(appointmentRepository, never())
           .delete(any(Appointment.class));
@@ -2140,7 +2140,7 @@ class AppointmentServiceTest {
       appointment.setId(1L);
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2167,7 +2167,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository
@@ -2196,7 +2196,7 @@ class AppointmentServiceTest {
       appointment.markAsConfirmed();
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2223,7 +2223,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository
@@ -2252,7 +2252,7 @@ class AppointmentServiceTest {
       appointment.markAsConfirmed();
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2279,7 +2279,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository
@@ -2297,7 +2297,7 @@ class AppointmentServiceTest {
       );
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2311,7 +2311,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository,
@@ -2330,7 +2330,7 @@ class AppointmentServiceTest {
       );
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2344,7 +2344,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository,
@@ -2374,7 +2374,7 @@ class AppointmentServiceTest {
       appointment.markAsConfirmed();
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2393,7 +2393,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository,
@@ -2423,7 +2423,7 @@ class AppointmentServiceTest {
       appointment.markAsCompleted();
 
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2442,7 +2442,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository,
@@ -2471,7 +2471,7 @@ class AppointmentServiceTest {
 
       // Appointment starts as PENDING.
       when(
-          appointmentRepository.findByIdAndUser(
+          appointmentRepository.findByUserAndId(
               user,
               1L
           )
@@ -2490,7 +2490,7 @@ class AppointmentServiceTest {
 
       verify(
           appointmentRepository
-      ).findByIdAndUser(user, 1L);
+      ).findByUserAndId(user, 1L);
 
       verify(
           appointmentRepository,

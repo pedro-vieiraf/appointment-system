@@ -24,7 +24,7 @@ public interface AppointmentRepository
   /**
    * Get by ID by user.
    */
-  Optional<Appointment> findByIdAndUser(User user, Long id);
+  Optional<Appointment> findByUserAndId(User user, Long id);
 
   /**
    * Verify if another appointment exists at the given time.
