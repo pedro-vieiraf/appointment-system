@@ -11,6 +11,9 @@ import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsExcep
 import com.pedrovieira.appointmentsystem.exception.users.InvalidPasswordException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -215,6 +218,38 @@ public class GlobalExceptionHandler {
       HttpServletRequest request
   ) {
     return createErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+  }
+
+  /**
+   * Maps a slot collision detected by PostgreSQL to the existing conflict response.
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleAppointmentSlotCollision(
+      DataIntegrityViolationException exception,
+      HttpServletRequest request
+  ) {
+    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ConstraintViolationException violation
+          && "ux_appointments_user_active_slot".equals(violation.getConstraintName())) {
+        return createErrorResponse(
+            HttpStatus.CONFLICT, "Appointment date conflicts with another appointment.", request);
+      }
+    }
+    throw exception;
+  }
+
+  /**
+   * Reports a write based on an appointment version that has since changed.
+   */
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleConcurrentAppointmentChange(
+      OptimisticLockingFailureException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.CONFLICT, "Appointment changed. Reload it before retrying.", request);
   }
 
   /**
