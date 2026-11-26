@@ -2,8 +2,11 @@ package com.pedrovieira.appointmentsystem.service;
 
 import com.pedrovieira.appointmentsystem.dto.request.WeeklyAvailabilityRequest;
 import com.pedrovieira.appointmentsystem.dto.response.CandidateSlot;
+import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.AvailabilityWindow;
 import com.pedrovieira.appointmentsystem.entity.WeeklyAvailability;
+import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
+import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.repository.WeeklyAvailabilityRepository;
 import java.time.Clock;
@@ -12,6 +15,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.zone.ZoneRules;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +33,7 @@ public class WeeklyAvailabilityService {
 
   private final WeeklyAvailabilityRepository availabilityRepository;
   private final UserRepository userRepository;
+  private final AppointmentRepository appointmentRepository;
   private final Clock clock;
 
   /**
@@ -36,7 +41,7 @@ public class WeeklyAvailabilityService {
    */
   @Transactional
   public WeeklyAvailabilityRequest replace(long ownerId, WeeklyAvailabilityRequest request) {
-    var owner = userRepository.findForAvailabilityUpdateById(ownerId).orElseThrow();
+    var owner = userRepository.findForSchedulingUpdateById(ownerId).orElseThrow();
     var availability = availabilityRepository.findById(ownerId)
         .orElseGet(() -> new WeeklyAvailability(owner));
     availability.configure(request.timeZone(), request.durationMinutes(), request.windows());
@@ -56,6 +61,32 @@ public class WeeklyAvailabilityService {
   public List<CandidateSlot> preview(long ownerId, LocalDate date) {
     return availabilityRepository.findById(ownerId)
         .map(availability -> calculateSlots(availability, date)).orElseGet(List::of);
+  }
+
+  /** Lists future slots that do not overlap an existing appointment for this owner. */
+  @Transactional(readOnly = true)
+  public List<CandidateSlot> findFreeSlots(long ownerId, LocalDate date) {
+    List<CandidateSlot> candidates = preview(ownerId, date);
+    if (candidates.isEmpty()) {
+      return candidates;
+    }
+
+    LocalDateTime earliestStart = LocalDateTime.ofInstant(
+        candidates.getFirst().start(), ZoneOffset.UTC)
+        .minusMinutes(Appointment.MAX_DURATION_MINUTES);
+    LocalDateTime latestEnd = LocalDateTime.ofInstant(candidates.getLast().end(), ZoneOffset.UTC);
+    List<Appointment> appointments = appointmentRepository.findSlotOccupants(
+        ownerId, earliestStart, latestEnd, AppointmentStatus.CANCELLED);
+
+    return candidates.stream()
+        .filter(slot -> appointments.stream().noneMatch(appointment -> overlaps(appointment, slot)))
+        .toList();
+  }
+
+  private boolean overlaps(Appointment appointment, CandidateSlot slot) {
+    Instant start = appointment.getAppointmentDate().toInstant(ZoneOffset.UTC);
+    Instant end = start.plus(Duration.ofMinutes(appointment.getDurationMinutes()));
+    return start.isBefore(slot.end()) && end.isAfter(slot.start());
   }
 
   private WeeklyAvailabilityRequest toSettings(WeeklyAvailability availability) {

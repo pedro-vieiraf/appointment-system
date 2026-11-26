@@ -14,7 +14,8 @@ public record AppointmentResponse(
     String description,
     LocalDateTime appointmentDate,
     AppointmentStatus status,
-    List<Integer> reminderOffsetsMinutes
+    List<Integer> reminderOffsetsMinutes,
+    int durationMinutes
 ) {
 
   /**
@@ -29,7 +30,8 @@ public record AppointmentResponse(
         appointment.getDescription(),
         appointment.getAppointmentDate(),
         appointment.getStatus(),
-        appointment.getReminderOffsetsMinutes()
+        appointment.getReminderOffsetsMinutes(),
+        appointment.getDurationMinutes()
     );
   }
 }

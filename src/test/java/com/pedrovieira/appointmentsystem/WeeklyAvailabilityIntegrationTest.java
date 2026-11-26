@@ -2,6 +2,7 @@ package com.pedrovieira.appointmentsystem;
 
 import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.pedrovieira.appointmentsystem.dto.request.LoginRequest;
 import com.pedrovieira.appointmentsystem.dto.request.RegisterRequest;
+import com.pedrovieira.appointmentsystem.dto.response.AppointmentResponse;
 import com.pedrovieira.appointmentsystem.dto.response.LoginResponse;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
@@ -152,6 +154,101 @@ class WeeklyAvailabilityIntegrationTest {
         .andExpect(jsonPath("$[0].start").value("2030-03-10T06:00:00Z"))
         .andExpect(jsonPath("$[1].start").value("2030-03-10T07:00:00Z"))
         .andExpect(jsonPath("$[2].start").value("2030-03-10T07:30:00Z"));
+  }
+
+  @Test
+  void freeSlotsExcludeOnlyOverlappingNonCancelledAppointmentsForTheOwner() throws Exception {
+    doReturn(Instant.parse("2030-01-06T12:00:00Z")).when(clock).instant();
+    String owner = registerAndLogin();
+    String other = registerAndLogin();
+    mockMvc.perform(put(PATH)
+            .header(HttpHeaders.AUTHORIZATION, owner)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "timeZone":"America/Sao_Paulo", "durationMinutes":30,
+                  "windows":[{"dayOfWeek":"MONDAY","start":"10:00","end":"12:30"}]
+                }
+                """))
+        .andExpect(status().isOk());
+
+    long appointmentId = createAppointment(owner, "2030-01-07T13:15:00", 45);
+    long cancelledId = createAppointment(owner, "2030-01-07T14:30:00", 30);
+    createAppointment(other, "2030-01-07T14:00:00", 30);
+    mockMvc.perform(patch("/appointments/{id}/cancel", cancelledId)
+            .header(HttpHeaders.AUTHORIZATION, owner))
+        .andExpect(status().isOk());
+    entityManager.flush();
+    entityManager.clear();
+
+    mockMvc.perform(get(PATH + "/slots").param("date", "2030-01-07")
+            .header(HttpHeaders.AUTHORIZATION, owner))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(3))
+        .andExpect(jsonPath("$[0].start").value("2030-01-07T14:00:00Z"))
+        .andExpect(jsonPath("$[1].start").value("2030-01-07T14:30:00Z"));
+
+    mockMvc.perform(patch("/appointments/{id}", appointmentId)
+            .header(HttpHeaders.AUTHORIZATION, owner)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"durationMinutes":75}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.durationMinutes").value(75));
+    entityManager.flush();
+    entityManager.clear();
+
+    mockMvc.perform(get(PATH + "/slots").param("date", "2030-01-07")
+            .header(HttpHeaders.AUTHORIZATION, owner))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$[0].start").value("2030-01-07T14:30:00Z"));
+  }
+
+  @Test
+  void legacyAppointmentStartingThePreviousDayStillBlocksAnOverlappingSlot() throws Exception {
+    doReturn(Instant.parse("2030-01-06T12:00:00Z")).when(clock).instant();
+    String authorization = registerAndLogin();
+    mockMvc.perform(put(PATH)
+            .header(HttpHeaders.AUTHORIZATION, authorization)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "timeZone":"UTC", "durationMinutes":30,
+                  "windows":[{"dayOfWeek":"MONDAY","start":"00:00","end":"01:00"}]
+                }
+                """))
+        .andExpect(status().isOk());
+    long id = createAppointment(authorization, "2030-01-06T23:45:00", 30);
+    entityManager.flush();
+    entityManager.createNativeQuery("update appointments set duration_minutes = null where id = :id")
+        .setParameter("id", id)
+        .executeUpdate();
+    entityManager.clear();
+
+    mockMvc.perform(get("/appointments/{id}", id)
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.durationMinutes").value(30));
+    mockMvc.perform(get(PATH + "/slots").param("date", "2030-01-07")
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].start").value("2030-01-07T00:30:00Z"));
+  }
+
+  private long createAppointment(String authorization, String date, int duration) throws Exception {
+    String response = mockMvc.perform(post("/appointments")
+            .header(HttpHeaders.AUTHORIZATION, authorization)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"title":"Math lesson","appointmentDate":"%s","durationMinutes":%d}
+                """.formatted(date, duration)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.durationMinutes").value(duration))
+        .andReturn().getResponse().getContentAsString();
+    return jsonMapper.readValue(response, AppointmentResponse.class).id();
   }
 
   private String registerAndLogin() throws Exception {

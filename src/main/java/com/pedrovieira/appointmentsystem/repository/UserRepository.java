@@ -29,8 +29,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
   boolean existsByEmailAndIdNot(String email, Long id);
 
   /**
-   * Serializes schedule creation and replacement for this account.
+   * Serializes changes to the schedule and appointments for this account.
    */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  Optional<User> findForAvailabilityUpdateById(Long id);
+  Optional<User> findForSchedulingUpdateById(Long id);
 }

@@ -52,4 +52,13 @@ public class WeeklyAvailabilityController {
   ) {
     return availabilityService.preview(user.getId(), date);
   }
+
+  /** Returns the candidate intervals that do not overlap an appointment. */
+  @GetMapping("/slots")
+  public List<CandidateSlot> slots(
+      @AuthenticationPrincipal User user,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+  ) {
+    return availabilityService.findFreeSlots(user.getId(), date);
+  }
 }

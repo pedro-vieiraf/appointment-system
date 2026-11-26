@@ -5,6 +5,8 @@ import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.validation.SizeCheck;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -38,7 +40,11 @@ public record AppointmentRequest(
     LocalDateTime appointmentDate,
 
     @Schema(description = "Unique positive offsets in minutes. Omit for 1440; [] disables.")
-    List<Integer> reminderOffsetsMinutes
+    List<Integer> reminderOffsetsMinutes,
+
+    @Min(1) @Max(Appointment.MAX_DURATION_MINUTES)
+    @Schema(description = "Duration in minutes. Defaults to 30 when omitted.")
+    Integer durationMinutes
 
 ) {
 
@@ -46,7 +52,16 @@ public record AppointmentRequest(
    * Creates an appointment request with the default reminder settings.
    */
   public AppointmentRequest(String title, String description, LocalDateTime appointmentDate) {
-    this(title, description, appointmentDate, null);
+    this(title, description, appointmentDate, null, null);
+  }
+
+
+  /** Creates a request with explicit reminders and no duration override. */
+  public AppointmentRequest(
+      String title, String description, LocalDateTime appointmentDate,
+      List<Integer> reminderOffsetsMinutes
+  ) {
+    this(title, description, appointmentDate, reminderOffsetsMinutes, null);
   }
 
   /**
@@ -61,6 +76,9 @@ public record AppointmentRequest(
     );
     if (reminderOffsetsMinutes != null) {
       appointment.replaceReminderOffsets(reminderOffsetsMinutes);
+    }
+    if (durationMinutes != null) {
+      appointment.changeDuration(durationMinutes);
     }
     return appointment;
   }
