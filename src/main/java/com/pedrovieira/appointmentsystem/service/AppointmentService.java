@@ -16,6 +16,7 @@ import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -48,17 +49,18 @@ public class AppointmentService {
       throw new BusinessRuleException("Appointment date is before current date");
     }
 
+    lockSchedule(user);
+    expireHolds(user);
     if (appointmentRepository.existsByUserAndAppointmentDateAndStatusNot(
         user,
         request.appointmentDate(),
         AppointmentStatus.CANCELLED
     )) {
       throw new BusinessRuleException(
-          "User already has an appointment at this time"
+          "Você já tem um agendamento nesse horário. Escolha outro horário."
       );
     }
 
-    lockSchedule(user);
     return appointmentRepository.save(request.toEntity(user));
   }
 
@@ -85,7 +87,9 @@ public class AppointmentService {
       UpdateAppointmentRequest request
   ) {
     Appointment appointment = getById(user, id);
+    lockSchedule(user);
     final LocalDateTime now = LocalDateTime.now(clock);
+    appointment.requireUnexpiredHold(now);
 
     if (request.appointmentDate() != null
         && !request.appointmentDate().isAfter(now)) {
@@ -95,6 +99,7 @@ public class AppointmentService {
       );
     }
 
+    expireHolds(user);
     if (request.appointmentDate() != null
         && appointment.getStatus() != AppointmentStatus.CANCELLED
         && appointmentRepository.existsByUserAndAppointmentDateAndIdNotAndStatusNot(
@@ -105,11 +110,10 @@ public class AppointmentService {
     )) {
 
       throw new AppointmentConflictException(
-          "Appointment date conflicts with another appointment."
+          "Esse horário coincide com outro agendamento. Escolha outro horário."
       );
     }
 
-    lockSchedule(user);
     final List<Integer> previousOffsets = appointment.getReminderOffsetsMinutes();
     if (request.reminderOffsetsMinutes() != null) {
       appointment.replaceReminderOffsets(request.reminderOffsetsMinutes());
@@ -198,8 +202,10 @@ public class AppointmentService {
         getById(user, appointmentId);
 
     lockSchedule(user);
+    LocalDateTime now = LocalDateTime.now(clock);
+    appointment.requireUnexpiredHold(now);
     appointment.markAsConfirmed();
-    appointment.refreshReminderSchedule(LocalDateTime.now(clock), false, List.of());
+    appointment.refreshReminderSchedule(now, false, List.of());
 
     return appointmentRepository.save(appointment);
   }
@@ -216,6 +222,14 @@ public class AppointmentService {
     appointment.markAsCanceled();
 
     return appointmentRepository.save(appointment);
+  }
+
+  private void expireHolds(User user) {
+    Long ownerId = user.getId();
+    if (ownerId != null) {
+      appointmentRepository.expirePendingHolds(
+          ownerId, LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
+    }
   }
 
   private void lockSchedule(User user) {

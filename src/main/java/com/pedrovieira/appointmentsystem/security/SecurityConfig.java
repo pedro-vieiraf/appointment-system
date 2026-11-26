@@ -35,6 +35,10 @@ public class SecurityConfig {
         )
         .authorizeHttpRequests(auth -> {
           auth.requestMatchers("/auth/**").permitAll();
+          auth.requestMatchers(HttpMethod.GET, "/public/availability/*/slots",
+              "/public/availability/*/requests/verify").permitAll();
+          auth.requestMatchers(HttpMethod.POST, "/public/availability/*/requests",
+              "/public/availability/*/requests/verify").permitAll();
           if (apiDocsEnabled) {
             auth.requestMatchers(HttpMethod.GET,
                 "/v3/api-docs", "/v3/api-docs.yaml", "/v3/api-docs/swagger-config",

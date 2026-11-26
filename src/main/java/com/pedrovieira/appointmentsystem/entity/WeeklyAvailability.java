@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 
 /**
@@ -25,6 +26,7 @@ import lombok.Getter;
 @Table(name = "weekly_availability")
 public class WeeklyAvailability {
 
+  @Getter
   @Id
   @Column(name = "user_id")
   private Long userId;
@@ -41,6 +43,10 @@ public class WeeklyAvailability {
   @Getter
   @Column(nullable = false)
   private int durationMinutes;
+
+  @Getter
+  @Column(name = "public_link_id", unique = true)
+  private UUID publicLinkId;
 
   @ElementCollection
   @CollectionTable(
@@ -84,6 +90,19 @@ public class WeeklyAvailability {
     durationMinutes = duration;
     windows.clear();
     windows.addAll(ordered);
+  }
+
+  /** Enables sharing and returns the existing link if sharing is already enabled. */
+  public UUID enableSharing() {
+    if (publicLinkId == null) {
+      publicLinkId = UUID.randomUUID();
+    }
+    return publicLinkId;
+  }
+
+  /** Invalidates the current public link. */
+  public void revokeSharing() {
+    publicLinkId = null;
   }
 
   /** Returns the windows ordered by weekday and local start time. */

@@ -15,7 +15,10 @@ public record AppointmentResponse(
     LocalDateTime appointmentDate,
     AppointmentStatus status,
     List<Integer> reminderOffsetsMinutes,
-    int durationMinutes
+    int durationMinutes,
+    String guestName,
+    String guestEmail,
+    LocalDateTime holdExpiresAt
 ) {
 
   /**
@@ -31,7 +34,10 @@ public record AppointmentResponse(
         appointment.getAppointmentDate(),
         appointment.getStatus(),
         appointment.getReminderOffsetsMinutes(),
-        appointment.getDurationMinutes()
+        appointment.getDurationMinutes(),
+        appointment.getGuestName(),
+        appointment.getGuestEmail(),
+        appointment.getHoldExpiresAt()
     );
   }
 }

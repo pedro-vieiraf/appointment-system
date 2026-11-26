@@ -15,6 +15,7 @@ import org.postgresql.util.PSQLException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -236,7 +237,9 @@ public class GlobalExceptionHandler {
           && "ex_appointments_user_active_interval"
               .equals(violation.getServerErrorMessage().getConstraint())) {
         return createErrorResponse(
-            HttpStatus.CONFLICT, "Appointment overlaps another appointment.", request);
+            HttpStatus.CONFLICT,
+            "Esse intervalo coincide com outro agendamento. Escolha outro horário ou duração.",
+            request);
       }
     }
     throw exception;
@@ -252,7 +255,9 @@ public class GlobalExceptionHandler {
       HttpServletRequest request
   ) {
     return createErrorResponse(
-        HttpStatus.CONFLICT, "Appointment changed. Reload it before retrying.", request);
+        HttpStatus.CONFLICT,
+        "O agendamento foi alterado enquanto você editava. Atualize a agenda e tente novamente.",
+        request);
   }
 
   /**
@@ -264,6 +269,16 @@ public class GlobalExceptionHandler {
       InvalidAvailabilityException exception, HttpServletRequest request
   ) {
     return createErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+  }
+
+  /** Returns an actionable public booking error in the standard format. */
+  @ExceptionHandler(PublicBookingException.class)
+  public ResponseEntity<ErrorResponse> handlePublicBooking(
+      PublicBookingException exception, HttpServletRequest request
+  ) {
+    HttpStatus status = exception.getStatus();
+    return ResponseEntity.status(status)
+        .body(createErrorResponse(status, exception.getMessage(), request));
   }
 
   private ErrorResponse createErrorResponse(

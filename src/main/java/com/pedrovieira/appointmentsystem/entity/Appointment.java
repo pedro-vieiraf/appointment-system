@@ -66,12 +66,20 @@ public class Appointment {
   private String description;
 
   @Getter
-  @Setter
   @Column(nullable = false)
   private LocalDateTime appointmentDate;
 
   @Column(name = "duration_minutes")
   private Integer durationMinutes = DEFAULT_DURATION_MINUTES;
+
+  @Getter
+  private String guestName;
+
+  @Getter
+  private String guestEmail;
+
+  @Getter
+  private LocalDateTime holdExpiresAt;
 
   @Getter
   @Column(nullable = false)
@@ -151,6 +159,30 @@ public class Appointment {
     );
   }
 
+  /** Changes the scheduled start without allowing a pending hold to extend past it. */
+  public void setAppointmentDate(LocalDateTime date) {
+    appointmentDate = date;
+    if (holdExpiresAt != null && date.isBefore(holdExpiresAt)) {
+      holdExpiresAt = date;
+    }
+  }
+
+  /** Sets the verified guest details and the deadline for a pending public request. */
+  public void holdForGuest(String name, String email, LocalDateTime expiresAt) {
+    guestName = name;
+    guestEmail = email;
+    holdExpiresAt = expiresAt;
+  }
+
+  /** Rejects changes that require an active pending request after its deadline. */
+  public void requireUnexpiredHold(LocalDateTime now) {
+    if (holdExpiresAt != null && !holdExpiresAt.isAfter(now)) {
+      throw new BusinessRuleException(
+          "O prazo para aprovar a solicitação venceu e o horário foi liberado. "
+              + "Peça ao cliente para enviar uma nova solicitação.");
+    }
+  }
+
   /** Returns the appointment duration, including a default for existing records. */
   public int getDurationMinutes() {
     return durationMinutes == null ? DEFAULT_DURATION_MINUTES : durationMinutes;
@@ -221,6 +253,7 @@ public class Appointment {
     }
 
     this.status = AppointmentStatus.CONFIRMED;
+    holdExpiresAt = null;
   }
 
   /**
@@ -232,6 +265,7 @@ public class Appointment {
       throw new BusinessRuleException("Only pending or confirmed appointments can be cancelled");
     }
     status = AppointmentStatus.CANCELLED;
+    holdExpiresAt = null;
     reminderSchedule.clear();
   }
 

@@ -1,6 +1,7 @@
 package com.pedrovieira.appointmentsystem.controller;
 
 import com.pedrovieira.appointmentsystem.dto.request.WeeklyAvailabilityRequest;
+import com.pedrovieira.appointmentsystem.dto.response.AvailabilityShare;
 import com.pedrovieira.appointmentsystem.dto.response.CandidateSlot;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.service.WeeklyAvailabilityService;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -60,5 +62,26 @@ public class WeeklyAvailabilityController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
   ) {
     return availabilityService.findFreeSlots(user.getId(), date);
+  }
+
+  /** Returns the authenticated owner's active share link, if one exists. */
+  @GetMapping("/share")
+  public ResponseEntity<AvailabilityShare> getShare(@AuthenticationPrincipal User user) {
+    return ResponseEntity.of(availabilityService.getPublicLink(user.getId())
+        .map(AvailabilityShare::forLink));
+  }
+
+  /** Enables sharing for the authenticated owner's existing schedule. */
+  @PutMapping("/share")
+  public ResponseEntity<AvailabilityShare> enableShare(@AuthenticationPrincipal User user) {
+    return ResponseEntity.of(availabilityService.enableSharing(user.getId())
+        .map(AvailabilityShare::forLink));
+  }
+
+  /** Invalidates the authenticated owner's active share link. */
+  @DeleteMapping("/share")
+  public ResponseEntity<Void> revokeShare(@AuthenticationPrincipal User user) {
+    availabilityService.revokeSharing(user.getId());
+    return ResponseEntity.noContent().build();
   }
 }

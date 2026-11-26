@@ -242,7 +242,7 @@ class AppointmentServiceTest {
           );
 
       assertEquals(
-          "User already has an appointment at this time",
+          "Você já tem um agendamento nesse horário. Escolha outro horário.",
           exception.getMessage()
       );
 
@@ -1868,7 +1868,7 @@ class AppointmentServiceTest {
           );
 
       assertEquals(
-          "Appointment date conflicts with another appointment.",
+          "Esse horário coincide com outro agendamento. Escolha outro horário.",
           exception.getMessage()
       );
 
