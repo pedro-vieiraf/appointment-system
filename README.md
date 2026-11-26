@@ -1,143 +1,171 @@
 # Appointment System
 
-Sistema de gerenciamento de agendamentos desenvolvido com Spring Boot.
+A Java 21 and Spring Boot REST API for independent professionals to manage their agenda
+and share available appointment times. It is a portfolio project focused on reliable
+scheduling, tenant isolation, and tests against a real PostgreSQL database.
 
-O objetivo do projeto é construir uma API REST seguindo práticas utilizadas em ambientes profissionais, incluindo testes automatizados, CI/CD, Docker e boas práticas de arquitetura.
+## Project status
 
-## Tecnologias
+The latest published release is [v0.6.0](https://github.com/pedro-vieiraf/appointment-system/releases/tag/v0.6.0).
+It introduced configurable email reminders. This development snapshot also includes weekly
+availability, per-appointment duration, protection against overlapping appointments,
+revocable sharing links, and email-verified guest requests with temporary holds.
 
-- Java 21
-- Spring Boot
-- Spring Data JPA
-- PostgreSQL
-- Docker
-- Maven
-- GitHub Actions
+## Capabilities
 
-## Arquitetura
+- **Private agenda.** Professionals can register, authenticate with JWT, manage their
+  profile, and create, search, reschedule, confirm, cancel, complete, or delete their
+  own appointments. Listing supports date and title filters, sorting, and pagination.
+- **Availability.** Professionals set a time zone, a default slot duration, and
+  multiple working windows per weekday. The free-slot endpoint subtracts intervals
+  occupied by their non-cancelled appointments.
+- **Booking consistency.** PostgreSQL rejects overlapping intervals for the same
+  professional, including concurrent writes. Consecutive intervals may touch at
+  their endpoints. Cancellation releases the slot, and optimistic locking prevents
+  concurrent changes from silently overwriting each other.
+- **Email reminders.** Confirmed appointments can send reminders to their owner using
+  PostgreSQL and SMTP. The default is 24 hours before the appointment. Multiple
+  reminder offsets and an explicit opt-out are supported.
+- **Public requests.** Guests can view free slots without logging in
+  and request a slot after verifying their email. The professional can approve or
+  decline the request using the existing appointment actions.
 
-O projeto segue uma arquitetura em camadas:
+## Run locally
 
-```
-Controller
-    ↓
-Service
-    ↓
-Repository
-    ↓
-Database
-```
-
-## Executando localmente
-
-### Pré-requisitos
-
-Antes de executar o projeto, certifique-se de possuir:
-
-- Java 21
-- Docker
-- Docker Compose
-
-### Subindo o banco de dados
+Requirements are Java 21, a PostgreSQL 17 instance, and network access to Maven
+repositories on the first build. The Maven Wrapper is included. Docker Compose is
+an option for running PostgreSQL.
 
 ```bash
-docker compose up -d --build
-```
-
-Caso seja da sua preferência, a aplicação também pode ser executada pelo container Docker.
-
-### Executando a aplicação
-
-```bash
-./mvnw spring-boot:run
-```
-
-A API estará disponível em:
-
-```
-http://localhost:8080
-```
-
-## Testes
-
-Para executar os testes automatizados:
-
-```bash
-./mvnw test
-```
-
-### Coverage
-
-With the test database running, use `./mvnw verify` to generate the JaCoCo report.
-Open `target/site/jacoco/index.html` to review line and branch coverage.
-Use `./mvnw clean verify` when you need a fresh report after switching branches
-or changing the code under test.
-
-## CI/CD
-
-O projeto utiliza GitHub Actions para:
-
-- Executar testes automaticamente;
-- Validar o build da aplicação;
-- Garantir que Pull Requests estejam funcionando corretamente antes do merge.
-
-## Explore a API no Swagger
-
-Com o PostgreSQL disponível em `localhost:5432` e o banco `appointment_system` criado, inicie
-a aplicação com o perfil de desenvolvimento:
-
-```bash
+docker compose up -d postgres
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- Especificação OpenAPI: `http://localhost:8080/v3/api-docs`
+Run these commands from the repository root. An existing PostgreSQL installation works
+too. The `dev` profile expects the `appointment_system` database at `localhost:5432`.
+Override the connection with `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`,
+and `SPRING_DATASOURCE_PASSWORD` as needed. Use a strong, deployment-specific
+`JWT_SECRET` outside local development.
 
-A configuração padrão desabilita a documentação. O perfil `dev` habilita a interface e
-a especificação sem exigir login para consultá-las.
+- [Swagger UI](http://localhost:8080/swagger-ui/index.html)
+- [OpenAPI document](http://localhost:8080/v3/api-docs)
 
-1. Crie uma conta com `POST /auth/register` e faça login com `POST /auth/login`.
-2. Copie o valor de `accessToken` e cole-o em **Authorize** no Swagger UI. A interface
-   envia o cabeçalho `Authorization: Bearer <token>`.
-3. Experimente `GET /appointments`. Use `title` para buscar por parte do título e
-   `startDate` e `endDate` para limitar o período. As datas são inclusivas e devem
-   incluir a hora local, por exemplo `2026-12-01T09:00:00`.
-   A primeira página é `page=0`. O padrão é `size=10` e `sort=appointmentDate,asc`.
+Swagger is enabled by the `dev` profile. Register with `POST /auth/register`, log in
+with `POST /auth/login`, and paste the returned `accessToken` into **Authorize** to
+try protected routes.
 
-Um agendamento nasce como `PENDING`. Use `PATCH /appointments/{id}/confirm` para
-confirmá-lo, `PATCH /appointments/{id}/cancel` para cancelar um agendamento pendente
-ou confirmado e `PATCH /appointments/{id}/complete` para concluir um agendamento
-confirmado. Transições inválidas retornam `409 Conflict`.
+The appointment list supports `title`, inclusive `startDate` and `endDate`,
+and the standard `page`, `size`, and `sort` parameters. The default is
+`page=0&size=10&sort=appointmentDate,asc`.
 
-## Appointment reminders
+### Configure email
 
-Supply `reminderOffsetsMinutes` on create or update, for example `[1440, 120]`.
-Omitting the field on create uses 24 hours. On update, omission preserves the current
-settings. Send `[]` to disable reminders for the appointment.
+Email reminders and guest verification are independently opt-in. Configure the SMTP
+server with `SPRING_MAIL_HOST` and `SPRING_MAIL_PORT`. Set credentials and TLS through
+the Spring Boot mail configuration if your provider requires them. Use a local SMTP
+capture server when demonstrating the flow.
 
-Email delivery is opt-in. Set `REMINDERS_DELIVERY_ENABLED=true`, `REMINDERS_FROM`,
-and `SPRING_MAIL_HOST` before starting the application. Set `SPRING_MAIL_PORT` and
-configure credentials and TLS using Spring Boot mail properties as required by your
-SMTP server. The sender polls PostgreSQL every minute by default
-(`REMINDERS_POLL_INTERVAL=PT1M`).
+| Setting | Purpose |
+| --- | --- |
+| `REMINDERS_DELIVERY_ENABLED=true` | Enables the reminder dispatcher. |
+| `REMINDERS_FROM` | Sender address for reminder emails. |
+| `REMINDERS_POLL_INTERVAL` | PostgreSQL polling interval. Defaults to `PT1M`. |
+| `BOOKING_VERIFICATION_ENABLED=true` | Enables public booking requests and email verification. |
+| `BOOKING_VERIFICATION_BASE_URL` | App URL reachable by the guest, such as `http://localhost:8080` for a local demo. |
+| `BOOKING_VERIFICATION_FROM` | Sender address for verification emails. |
+| `BOOKING_VERIFICATION_TOKEN_TTL` | Verification link lifetime. Defaults to `PT15M`. |
+| `BOOKING_VERIFICATION_HOLD_TTL` | Maximum review window after verification. Defaults to `PT2H`. |
 
-The sender retries a failed submission on later polls while the appointment is confirmed
-and still in the future. If SMTP accepts a message and the database transaction fails
-before committing, a later poll may send the message again.
+Use ISO 8601 durations for the timing settings. With reminders enabled, a failed
+SMTP submission is retried while the appointment remains confirmed and in the future.
+If SMTP accepts a message and the database transaction fails before commit, a later
+poll can send it again.
 
-## Appointment slot conflicts
+## Demonstrate the workflow
 
-Non-cancelled appointments for the same account cannot overlap. Creation, rescheduling,
-and duration changes return `409 Conflict` when the requested interval is occupied.
-Intervals that only touch at an endpoint are allowed. Cancelling releases the interval
-and preserves the appointment record.
+### 1. Configure the professional's availability
 
-On startup, the application installs the PostgreSQL exclusion constraint after Hibernate
-updates the tables. The database needs the `btree_gist` extension. The application can
-install it if its database role has `CREATE` permission, or an administrator can install
-it beforehand. If older records overlap using the 30-minute fallback, the constraint
-installation fails and leaves the records and prior index intact. Use this query to
-identify conflicts and resolve them before retrying startup.
+Send an authenticated `PUT /users/me/availability` request:
+
+```json
+{
+  "timeZone": "America/Sao_Paulo",
+  "durationMinutes": 45,
+  "windows": [
+    {"dayOfWeek": "MONDAY", "start": "10:00", "end": "12:00"},
+    {"dayOfWeek": "MONDAY", "start": "13:00", "end": "18:00"}
+  ]
+}
+```
+
+Use a future Monday for the examples below. A weekday with no windows has no slots.
+Read the saved schedule with `GET /users/me/availability`. Use
+`GET /users/me/availability/candidate-slots?date=<local-date>` to inspect the weekly
+grid and `GET /users/me/availability/slots?date=<local-date>` to see the intervals
+left after subtracting appointments. Both return UTC start and end instants.
+
+### 2. Create or share a booking
+
+**Manual appointment.** Use authenticated `POST /appointments` with a title and an
+`appointmentDate`. The timestamp has no offset in this API and is interpreted as
+UTC for slot calculations. Set `durationMinutes` to a whole number from 1 to 1,440.
+The default is 30 minutes, including for older records without a stored duration.
+When editing, omission preserves the current duration.
+
+If an interval overlaps another appointment for the same professional, the API
+returns `409 Conflict` with a `message` that explains what to change. For reminders,
+pass `reminderOffsetsMinutes`, such as `[1440, 120]`. Omission on creation defaults
+to 24 hours, omission on editing preserves the settings, and `[]` turns reminders off.
+
+**Guest request.** Send authenticated
+`PUT /users/me/availability/share` to obtain a `slotsPath`. Append
+`?date=<local-date>` and open the path on the same API host without authentication.
+The response contains only start and end times. The owner can retrieve the link
+with `GET /users/me/availability/share` or invalidate it with
+`DELETE /users/me/availability/share`. Enabling sharing again creates a new link.
+
+With guest verification enabled, send
+`POST /public/availability/{linkId}/requests` with the guest's `name`, `email`, the
+local `date`, and the exact UTC `start` returned by the slot endpoint. Open the
+verification email and submit the form. The API checks the slot again and creates
+a `PENDING` appointment only if the interval is still available. The hold lasts
+until the review deadline or the start of the appointment, whichever comes first.
+The verification result page explains expired links and scheduling conflicts. API
+clients can read the same information in the JSON `message` field.
+
+### 3. Decide the request and check the agenda
+
+Use `GET /appointments` as the professional to find the pending appointment and
+its verified guest details. Use `PATCH /appointments/{id}/confirm` to approve it,
+`PATCH /appointments/{id}/cancel` to decline or cancel it, and
+`PATCH /appointments/{id}/complete` after a confirmed appointment takes place.
+Expired holds release their intervals and are cancelled by a scheduled job.
+
+To exercise the conflict guarantee, try creating an overlapping appointment for
+the same professional with a different start time. It should return `409`. Try an
+interval starting at the first appointment's exact end and verify that it succeeds.
+
+## Architecture and engineering decisions
+
+Spring MVC controllers expose DTOs. Services own the application workflows and
+transaction boundaries. Domain entities enforce status transitions and working-hour
+rules. Spring Data JPA and PostgreSQL provide persistence, while Spring Security
+uses JWT for protected routes. Public endpoints expose availability without access
+to private appointment or customer records.
+
+PostgreSQL enforces interval exclusion using `btree_gist`. Appointment writes for
+one professional are coordinated in the database, and entity version checks catch
+stale updates. The Spring scheduler polls the persistent reminder table and uses
+row-level locking to coordinate multiple dispatchers.
+
+### Upgrade an existing database
+
+Hibernate updates the tables and the SQL initializer adds the interval constraint.
+The PostgreSQL role needs permission to create `btree_gist`, or an administrator
+must install the extension beforehand. If the 30-minute fallback reveals overlapping
+legacy appointments, constraint installation fails and preserves those records and
+the previous index. After the duration column exists, locate the conflicts before
+retrying startup:
 
 ```sql
 WITH occupied AS (
@@ -154,34 +182,32 @@ FROM occupied a
 JOIN occupied b ON b.user_id = a.user_id AND b.id > a.id AND a.slot && b.slot;
 ```
 
-## Weekly availability preview
+## Tests and CI
 
-Use the authenticated `PUT /users/me/availability` endpoint to replace your weekly schedule.
-For example:
+Run with a dedicated PostgreSQL test database and a test-only JWT secret:
 
-```json
-{
-  "timeZone": "America/Sao_Paulo",
-  "durationMinutes": 45,
-  "windows": [
-    {"dayOfWeek": "MONDAY", "start": "10:00", "end": "12:00"},
-    {"dayOfWeek": "MONDAY", "start": "13:00", "end": "18:00"}
-  ]
-}
+```bash
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/appointment_system_test
+export SPRING_DATASOURCE_USERNAME=postgres
+export SPRING_DATASOURCE_PASSWORD=postgres
+export JWT_SECRET=local-test-jwt-key-at-least-32-bytes-long
+./mvnw clean verify checkstyle:check
 ```
 
-A weekday with no windows has no candidates. Use `GET /users/me/availability` to read
-the schedule and `GET /users/me/availability/candidate-slots?date=2030-01-07` to preview
-future intervals that fit fully within a window. The date uses the configured time zone,
-and the response contains UTC instants. The preview does not account for existing
-appointments and is not a public booking endpoint.
+Create the test database before running the command. The suite combines unit tests,
+MockMvc controller tests, and PostgreSQL integration tests for ownership, overlapping
+writes, reminder concurrency, and public booking. The automated email tests use a
+simulated SMTP transport. The [GitHub Actions workflow](.github/workflows/ci.yml)
+runs Maven verification with PostgreSQL 17 and checks style on pushes and PRs
+targeting `develop`. Open `target/site/jacoco/index.html` for the coverage report.
 
-Use `GET /users/me/availability/slots?date=2030-01-07` to exclude intervals occupied
-by your non-cancelled appointments. The candidate preview remains available for checking
-the weekly schedule on its own.
+## Roadmap
 
-Use `durationMinutes` (1 to 1440 whole minutes) when creating or editing an appointment.
-Creation defaults to 30 minutes, and appointments saved before the duration field was
-added are treated as 30 minutes. Omitting the field when editing preserves the current
-duration. Appointment start timestamps are interpreted as UTC for slot calculations.
-Intervals that only touch at their endpoints do not overlap.
+| Priority | Remaining work |
+| --- | --- |
+| **1. Notify guests of the decision** | Send an email when the professional approves or declines a verified request. Use persistent delivery and retries so SMTP availability does not determine whether the decision is saved. |
+| **2. Build the public booking page** | Add a page where a guest can select a date and slot, submit their details, and see actionable success or error messages. Include a reproducible portfolio demo of the guest and professional flows. |
+| **3. Prepare for public deployment** | Add rate limiting to the public email request endpoint and document deployment configuration, database migrations, and operational checks. |
+
+Potential follow-ups include date-specific availability overrides and one-step
+confirmation for appointments booked manually by the professional.

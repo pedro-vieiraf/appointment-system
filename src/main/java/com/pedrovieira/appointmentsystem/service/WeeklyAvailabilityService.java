@@ -20,6 +20,7 @@ import java.time.zone.ZoneRules;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,10 +64,43 @@ public class WeeklyAvailabilityService {
         .map(availability -> calculateSlots(availability, date)).orElseGet(List::of);
   }
 
+  /** Returns the current public link identifier, if sharing is enabled. */
+  @Transactional(readOnly = true)
+  public Optional<UUID> getPublicLink(long ownerId) {
+    return availabilityRepository.findById(ownerId).map(WeeklyAvailability::getPublicLinkId);
+  }
+
+  /** Enables sharing for an existing weekly schedule. */
+  @Transactional
+  public Optional<UUID> enableSharing(long ownerId) {
+    userRepository.findForSchedulingUpdateById(ownerId);
+    return availabilityRepository.findById(ownerId).map(WeeklyAvailability::enableSharing);
+  }
+
+  /** Revokes the active public link, if one exists. */
+  @Transactional
+  public void revokeSharing(long ownerId) {
+    userRepository.findForSchedulingUpdateById(ownerId);
+    availabilityRepository.findById(ownerId).ifPresent(WeeklyAvailability::revokeSharing);
+  }
+
+  /** Returns only the available intervals for an active public link. */
+  @Transactional(readOnly = true)
+  public Optional<List<CandidateSlot>> findPublicFreeSlots(UUID linkId, LocalDate date) {
+    return availabilityRepository.findByPublicLinkId(linkId)
+        .map(availability -> findFreeSlots(availability, date));
+  }
+
   /** Lists future slots that do not overlap an existing appointment for this owner. */
   @Transactional(readOnly = true)
   public List<CandidateSlot> findFreeSlots(long ownerId, LocalDate date) {
-    List<CandidateSlot> candidates = preview(ownerId, date);
+    return availabilityRepository.findById(ownerId)
+        .map(availability -> findFreeSlots(availability, date))
+        .orElseGet(List::of);
+  }
+
+  private List<CandidateSlot> findFreeSlots(WeeklyAvailability availability, LocalDate date) {
+    List<CandidateSlot> candidates = calculateSlots(availability, date);
     if (candidates.isEmpty()) {
       return candidates;
     }
@@ -76,7 +110,8 @@ public class WeeklyAvailabilityService {
         .minusMinutes(Appointment.MAX_DURATION_MINUTES);
     LocalDateTime latestEnd = LocalDateTime.ofInstant(candidates.getLast().end(), ZoneOffset.UTC);
     List<Appointment> appointments = appointmentRepository.findSlotOccupants(
-        ownerId, earliestStart, latestEnd, AppointmentStatus.CANCELLED);
+        availability.getUserId(), earliestStart, latestEnd, AppointmentStatus.CANCELLED,
+        LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
 
     return candidates.stream()
         .filter(slot -> appointments.stream().noneMatch(appointment -> overlaps(appointment, slot)))

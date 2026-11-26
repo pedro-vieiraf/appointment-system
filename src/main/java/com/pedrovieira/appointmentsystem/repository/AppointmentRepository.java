@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -50,7 +51,19 @@ public interface AppointmentRepository
       select a from Appointment a
       where a.user.id = :ownerId and a.status <> :excludedStatus
         and a.appointmentDate >= :start and a.appointmentDate < :end
+        and (a.holdExpiresAt is null or a.holdExpiresAt > :now)
       """)
   List<Appointment> findSlotOccupants(
-      long ownerId, LocalDateTime start, LocalDateTime end, AppointmentStatus excludedStatus);
+      long ownerId, LocalDateTime start, LocalDateTime end,
+      AppointmentStatus excludedStatus, LocalDateTime now);
+
+  /** Cancels expired pending holds. A null owner applies the update to every account. */
+  @Modifying
+  @Query(value = """
+      update appointments
+      set status = 'CANCELLED', updated_at = :now, version = version + 1
+      where status = 'PENDING' and hold_expires_at <= :now
+        and (cast(:ownerId as bigint) is null or user_id = :ownerId)
+      """, nativeQuery = true)
+  void expirePendingHolds(Long ownerId, LocalDateTime now);
 }
