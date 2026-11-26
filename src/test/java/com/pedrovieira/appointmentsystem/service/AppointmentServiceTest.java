@@ -23,6 +23,7 @@ import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateI
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
+import com.pedrovieira.appointmentsystem.repository.BookingDecisionNotificationRepository;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -61,6 +62,9 @@ class AppointmentServiceTest {
   private UserRepository userRepository;
 
   @Mock
+  private BookingDecisionNotificationRepository notificationRepository;
+
+  @Mock
   private Clock clock;
 
   @BeforeEach()
@@ -75,6 +79,7 @@ class AppointmentServiceTest {
         new AppointmentService(
             appointmentRepository,
             userRepository,
+            notificationRepository,
             clock
         );
   }
