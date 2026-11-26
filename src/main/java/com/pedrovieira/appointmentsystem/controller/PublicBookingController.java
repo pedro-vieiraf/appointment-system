@@ -76,7 +76,7 @@ public class PublicBookingController {
     try {
       bookingService.verify(linkId, token);
       return verificationResult(HttpStatus.CREATED,
-          "Solicitação enviada. Agora aguarde a confirmação do profissional.");
+          "Solicitação enviada. Agora aguarde a resposta do profissional.");
     } catch (PublicBookingException exception) {
       return verificationResult(exception.getStatus(), exception.getMessage());
     }

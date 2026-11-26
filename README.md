@@ -28,7 +28,8 @@ revocable sharing links, and email-verified guest requests with temporary holds.
   reminder offsets and an explicit opt-out are supported.
 - **Public requests.** Guests can view free slots without logging in
   and request a slot after verifying their email. The professional can approve or
-  decline the request using the existing appointment actions.
+  decline the request using the existing appointment actions. The guest receives the
+  decision by email when delivery is enabled.
 
 ## Run locally
 
@@ -60,7 +61,7 @@ and the standard `page`, `size`, and `sort` parameters. The default is
 
 ### Configure email
 
-Email reminders and guest verification are independently opt-in. Configure the SMTP
+Reminders, guest verification, and guest decision delivery are independently opt-in. Configure the SMTP
 server with `SPRING_MAIL_HOST` and `SPRING_MAIL_PORT`. Set credentials and TLS through
 the Spring Boot mail configuration if your provider requires them. Use a local SMTP
 capture server when demonstrating the flow.
@@ -75,6 +76,8 @@ capture server when demonstrating the flow.
 | `BOOKING_VERIFICATION_FROM` | Sender address for verification emails. |
 | `BOOKING_VERIFICATION_TOKEN_TTL` | Verification link lifetime. Defaults to `PT15M`. |
 | `BOOKING_VERIFICATION_HOLD_TTL` | Maximum review window after verification. Defaults to `PT2H`. |
+| `BOOKING_NOTIFICATIONS_ENABLED=true` | Delivers decision emails using the sender in `BOOKING_VERIFICATION_FROM`. |
+| `BOOKING_NOTIFICATIONS_POLL_INTERVAL` | Decision queue polling interval. Defaults to `PT1M`. |
 
 Use ISO 8601 durations for the timing settings. With reminders enabled, a failed
 SMTP submission is retried while the appointment remains confirmed and in the future.
@@ -139,7 +142,10 @@ Use `GET /appointments` as the professional to find the pending appointment and
 its verified guest details. Use `PATCH /appointments/{id}/confirm` to approve it,
 `PATCH /appointments/{id}/cancel` to decline or cancel it, and
 `PATCH /appointments/{id}/complete` after a confirmed appointment takes place.
-Expired holds release their intervals and are cancelled by a scheduled job.
+Expired holds release their intervals and are cancelled by a scheduled job. With
+decision delivery enabled, the guest receives approval or decline by email. The
+decision and its notification are saved in one database transaction. The dispatcher
+retries failed SMTP submissions after one minute.
 
 To exercise the conflict guarantee, try creating an overlapping appointment for
 the same professional with a different start time. It should return `409`. Try an
@@ -205,9 +211,8 @@ targeting `develop`. Open `target/site/jacoco/index.html` for the coverage repor
 
 | Priority | Remaining work |
 | --- | --- |
-| **1. Notify guests of the decision** | Send an email when the professional approves or declines a verified request. Use persistent delivery and retries so SMTP availability does not determine whether the decision is saved. |
-| **2. Build the public booking page** | Add a page where a guest can select a date and slot, submit their details, and see actionable success or error messages. Include a reproducible portfolio demo of the guest and professional flows. |
-| **3. Prepare for public deployment** | Add rate limiting to the public email request endpoint and document deployment configuration, database migrations, and operational checks. |
+| **1. Build the public booking page** | Add a page where a guest can select a date and slot, submit their details, and see actionable success or error messages. Include a reproducible portfolio demo of the guest and professional flows. |
+| **2. Prepare for public deployment** | Add rate limiting to the public email request endpoint and document deployment configuration, database migrations, and operational checks. |
 
 Potential follow-ups include date-specific availability overrides and one-step
 confirmation for appointments booked manually by the professional.

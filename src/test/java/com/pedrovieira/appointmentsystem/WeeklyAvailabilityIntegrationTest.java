@@ -3,8 +3,13 @@ package com.pedrovieira.appointmentsystem;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -18,6 +23,8 @@ import com.pedrovieira.appointmentsystem.dto.request.LoginRequest;
 import com.pedrovieira.appointmentsystem.dto.request.RegisterRequest;
 import com.pedrovieira.appointmentsystem.dto.response.AppointmentResponse;
 import com.pedrovieira.appointmentsystem.dto.response.LoginResponse;
+import com.pedrovieira.appointmentsystem.repository.BookingDecisionNotificationRepository;
+import com.pedrovieira.appointmentsystem.service.BookingDecisionDispatcher;
 import com.pedrovieira.appointmentsystem.service.BookingExpirationService;
 import jakarta.persistence.EntityManager;
 import java.net.URI;
@@ -25,17 +32,21 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -62,6 +73,12 @@ class WeeklyAvailabilityIntegrationTest {
 
   @Autowired
   private BookingExpirationService bookingExpirationService;
+
+  @Autowired
+  private BookingDecisionNotificationRepository decisionRepository;
+
+  @Autowired
+  private PlatformTransactionManager transactionManager;
 
   @MockitoBean
   private JavaMailSender mailSender;
@@ -421,6 +438,61 @@ class WeeklyAvailabilityIntegrationTest {
             .param("token", token))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.message").value(containsString("escolha outro horário")));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+      "confirm,CONFIRMED,Seu agendamento foi confirmado",
+      "cancel,CANCELLED,Sua solicitação de agendamento foi recusada"
+  })
+  void decidingVerifiedRequestQueuesAndRetriesEmail(
+      String action, String decision, String subject
+  ) throws Exception {
+    Instant now = Instant.parse("2030-01-06T12:00:00Z");
+    doReturn(now).when(clock).instant();
+    String owner = registerAndLogin();
+    String requestPath = enablePublicBooking(owner).replace("/slots", "/requests");
+    String token = requestVerification(requestPath);
+    mockMvc.perform(post(requestPath + "/verify").param("token", token))
+        .andExpect(status().isCreated());
+    String page = mockMvc.perform(get("/appointments")
+            .header(HttpHeaders.AUTHORIZATION, owner))
+        .andExpect(status().isOk())
+        .andReturn().getResponse().getContentAsString();
+    long appointmentId = jsonMapper.readTree(page).required("content")
+        .required(0).required("id").asLong();
+
+    clearInvocations(mailSender);
+    mockMvc.perform(patch("/appointments/{id}/{action}", appointmentId, action)
+            .header(HttpHeaders.AUTHORIZATION, owner))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(decision));
+    verifyNoInteractions(mailSender);
+
+    entityManager.flush();
+    assertEquals(1, decisionRepository.findDueIds(now).size());
+
+    BookingDecisionDispatcher dispatcher = new BookingDecisionDispatcher(
+        decisionRepository, mailSender, transactionManager, clock, "booking@example.test");
+    doThrow(new MailSendException("SMTP temporarily unavailable")).doNothing()
+        .when(mailSender).send(any(SimpleMailMessage.class));
+
+    dispatcher.dispatch();
+    entityManager.flush();
+    assertEquals(1, decisionRepository.count());
+    dispatcher.dispatch();
+    verify(mailSender).send(any(SimpleMailMessage.class));
+
+    doReturn(now.plusSeconds(60)).when(clock).instant();
+    dispatcher.dispatch();
+    entityManager.flush();
+    dispatcher.dispatch();
+    assertEquals(0, decisionRepository.count());
+
+    ArgumentCaptor<SimpleMailMessage> message = ArgumentCaptor.forClass(SimpleMailMessage.class);
+    verify(mailSender, times(2)).send(message.capture());
+    assertEquals("guest@example.test", message.getValue().getTo()[0]);
+    assertEquals(subject, message.getValue().getSubject());
   }
 
   private String enablePublicBooking(String owner) throws Exception {

@@ -4,6 +4,7 @@ import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
+import com.pedrovieira.appointmentsystem.entity.BookingDecisionNotification;
 import com.pedrovieira.appointmentsystem.entity.User;
 import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
@@ -12,6 +13,7 @@ import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateI
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
+import com.pedrovieira.appointmentsystem.repository.BookingDecisionNotificationRepository;
 import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
@@ -35,6 +37,7 @@ public class AppointmentService {
 
   private final AppointmentRepository appointmentRepository;
   private final UserRepository userRepository;
+  private final BookingDecisionNotificationRepository notificationRepository;
   private final Clock clock;
 
   /**
@@ -206,6 +209,9 @@ public class AppointmentService {
     appointment.requireUnexpiredHold(now);
     appointment.markAsConfirmed();
     appointment.refreshReminderSchedule(now, false, List.of());
+    if (appointment.getGuestEmail() != null) {
+      enqueueDecision(appointment);
+    }
 
     return appointmentRepository.save(appointment);
   }
@@ -219,9 +225,22 @@ public class AppointmentService {
         getById(user, appointmentId);
 
     lockSchedule(user);
+    boolean decliningGuestRequest = appointment.getStatus() == AppointmentStatus.PENDING
+        && appointment.getGuestEmail() != null
+        && appointment.getHoldExpiresAt() != null
+        && appointment.getHoldExpiresAt().isAfter(LocalDateTime.now(clock));
     appointment.markAsCanceled();
+    if (decliningGuestRequest) {
+      enqueueDecision(appointment);
+    }
 
     return appointmentRepository.save(appointment);
+  }
+
+  private void enqueueDecision(Appointment appointment) {
+    notificationRepository.save(new BookingDecisionNotification(
+        appointment.getGuestEmail(), appointment.getStatus(), appointment.getAppointmentDate(),
+        clock.instant()));
   }
 
   private void expireHolds(User user) {
