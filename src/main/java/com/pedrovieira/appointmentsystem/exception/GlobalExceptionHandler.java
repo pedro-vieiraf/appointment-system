@@ -11,7 +11,7 @@ import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsExcep
 import com.pedrovieira.appointmentsystem.exception.users.InvalidPasswordException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
-import org.hibernate.exception.ConstraintViolationException;
+import org.postgresql.util.PSQLException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -230,10 +230,13 @@ public class GlobalExceptionHandler {
       HttpServletRequest request
   ) {
     for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
-      if (cause instanceof ConstraintViolationException violation
-          && "ux_appointments_user_active_slot".equals(violation.getConstraintName())) {
+      if (cause instanceof PSQLException violation
+          && "23P01".equals(violation.getSQLState())
+          && violation.getServerErrorMessage() != null
+          && "ex_appointments_user_active_interval"
+              .equals(violation.getServerErrorMessage().getConstraint())) {
         return createErrorResponse(
-            HttpStatus.CONFLICT, "Appointment date conflicts with another appointment.", request);
+            HttpStatus.CONFLICT, "Appointment overlaps another appointment.", request);
       }
     }
     throw exception;

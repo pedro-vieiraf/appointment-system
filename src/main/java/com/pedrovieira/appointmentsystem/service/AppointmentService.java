@@ -12,6 +12,7 @@ import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateI
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
+import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -32,11 +33,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class AppointmentService {
 
   private final AppointmentRepository appointmentRepository;
+  private final UserRepository userRepository;
   private final Clock clock;
 
   /**
    * Create Appointment.
    */
+  @Transactional
   public Appointment create(
       User user,
       AppointmentRequest request
@@ -55,6 +58,7 @@ public class AppointmentService {
       );
     }
 
+    lockSchedule(user);
     return appointmentRepository.save(request.toEntity(user));
   }
 
@@ -105,6 +109,7 @@ public class AppointmentService {
       );
     }
 
+    lockSchedule(user);
     final List<Integer> previousOffsets = appointment.getReminderOffsetsMinutes();
     if (request.reminderOffsetsMinutes() != null) {
       appointment.replaceReminderOffsets(request.reminderOffsetsMinutes());
@@ -116,6 +121,10 @@ public class AppointmentService {
 
     if (request.description() != null) {
       appointment.setDescription(request.description());
+    }
+
+    if (request.durationMinutes() != null) {
+      appointment.changeDuration(request.durationMinutes());
     }
 
     boolean appointmentDateChanged = request.appointmentDate() != null
@@ -139,6 +148,7 @@ public class AppointmentService {
   public void delete(User user, Long id) {
     Appointment appointment = getById(user, id);
 
+    lockSchedule(user);
     appointmentRepository.delete(appointment);
   }
 
@@ -173,6 +183,7 @@ public class AppointmentService {
     Appointment appointment =
         getById(user, appointmentId);
 
+    lockSchedule(user);
     appointment.markAsCompleted();
 
     return appointmentRepository.save(appointment);
@@ -186,6 +197,7 @@ public class AppointmentService {
     Appointment appointment =
         getById(user, appointmentId);
 
+    lockSchedule(user);
     appointment.markAsConfirmed();
     appointment.refreshReminderSchedule(LocalDateTime.now(clock), false, List.of());
 
@@ -200,8 +212,13 @@ public class AppointmentService {
     Appointment appointment =
         getById(user, appointmentId);
 
+    lockSchedule(user);
     appointment.markAsCanceled();
 
     return appointmentRepository.save(appointment);
+  }
+
+  private void lockSchedule(User user) {
+    userRepository.findForSchedulingUpdateById(user.getId());
   }
 }

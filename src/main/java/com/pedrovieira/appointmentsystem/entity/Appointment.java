@@ -40,6 +40,9 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "appointments")
 public class Appointment {
 
+  public static final int MAX_DURATION_MINUTES = 1440;
+  private static final int DEFAULT_DURATION_MINUTES = 30;
+
   private static final List<Integer> DEFAULT_REMINDER_OFFSETS_MINUTES = List.of(24 * 60);
 
   @Getter
@@ -66,6 +69,9 @@ public class Appointment {
   @Setter
   @Column(nullable = false)
   private LocalDateTime appointmentDate;
+
+  @Column(name = "duration_minutes")
+  private Integer durationMinutes = DEFAULT_DURATION_MINUTES;
 
   @Getter
   @Column(nullable = false)
@@ -143,6 +149,20 @@ public class Appointment {
         "No description provided",
         appointmentDate
     );
+  }
+
+  /** Returns the appointment duration, including a default for existing records. */
+  public int getDurationMinutes() {
+    return durationMinutes == null ? DEFAULT_DURATION_MINUTES : durationMinutes;
+  }
+
+  /** Sets the duration in whole minutes. */
+  public void changeDuration(int minutes) {
+    if (minutes < 1 || minutes > MAX_DURATION_MINUTES) {
+      throw new IllegalArgumentException(
+          "Appointment duration must be between 1 and 1440 minutes.");
+    }
+    durationMinutes = minutes;
   }
 
   /**

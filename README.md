@@ -127,21 +127,31 @@ before committing, a later poll may send the message again.
 
 ## Appointment slot conflicts
 
-An account can have one non-cancelled appointment per exact date and time.
-Cancelling an appointment releases its slot and preserves its record. Creation and
-rescheduling return `409 Conflict` when another appointment already occupies the slot.
+Non-cancelled appointments for the same account cannot overlap. Creation, rescheduling,
+and duration changes return `409 Conflict` when the requested interval is occupied.
+Intervals that only touch at an endpoint are allowed. Cancelling releases the interval
+and preserves the appointment record.
 
-On startup, the application creates the PostgreSQL slot index after Hibernate updates
-the tables. If an older database already contains conflicting appointments, startup
-fails and leaves the records intact. Review the existing records before upgrading.
-This query finds the conflicts:
+On startup, the application installs the PostgreSQL exclusion constraint after Hibernate
+updates the tables. The database needs the `btree_gist` extension. The application can
+install it if its database role has `CREATE` permission, or an administrator can install
+it beforehand. If older records overlap using the 30-minute fallback, the constraint
+installation fails and leaves the records and prior index intact. Use this query to
+identify conflicts and resolve them before retrying startup.
 
 ```sql
-SELECT user_id, appointment_date, COUNT(*)
-FROM appointments
-WHERE status <> 'CANCELLED'
-GROUP BY user_id, appointment_date
-HAVING COUNT(*) > 1;
+WITH occupied AS (
+    SELECT id, user_id, tsrange(
+        appointment_date,
+        appointment_date + COALESCE(duration_minutes, 30) * INTERVAL '1 minute',
+        '[)'
+    ) AS slot
+    FROM appointments
+    WHERE status <> 'CANCELLED'
+)
+SELECT a.user_id, a.id AS first_appointment_id, b.id AS second_appointment_id
+FROM occupied a
+JOIN occupied b ON b.user_id = a.user_id AND b.id > a.id AND a.slot && b.slot;
 ```
 
 ## Weekly availability preview
@@ -165,3 +175,13 @@ the schedule and `GET /users/me/availability/candidate-slots?date=2030-01-07` to
 future intervals that fit fully within a window. The date uses the configured time zone,
 and the response contains UTC instants. The preview does not account for existing
 appointments and is not a public booking endpoint.
+
+Use `GET /users/me/availability/slots?date=2030-01-07` to exclude intervals occupied
+by your non-cancelled appointments. The candidate preview remains available for checking
+the weekly schedule on its own.
+
+Use `durationMinutes` (1 to 1440 whole minutes) when creating or editing an appointment.
+Creation defaults to 30 minutes, and appointments saved before the duration field was
+added are treated as 30 minutes. Omitting the field when editing preserves the current
+duration. Appointment start timestamps are interpreted as UTC for slot calculations.
+Intervals that only touch at their endpoints do not overlap.

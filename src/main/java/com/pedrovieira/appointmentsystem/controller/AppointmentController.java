@@ -60,7 +60,7 @@ public class AppointmentController {
   @ApiResponse(responseCode = "403", description = "Authentication is required",
       content = @Content)
   @ApiResponse(responseCode = "409",
-      description = "Appointment date is in the past or conflicts with another appointment",
+      description = "Appointment date is in the past or overlaps another appointment",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> create(
@@ -168,7 +168,7 @@ public class AppointmentController {
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   @ApiResponse(responseCode = "409",
-      description = "The requested slot is occupied or the appointment changed concurrently",
+      description = "The interval is occupied or the appointment changed concurrently",
       content = @Content(mediaType = "application/json",
       schema = @Schema(implementation = ErrorResponse.class)))
   public ResponseEntity<AppointmentResponse> update(
