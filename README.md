@@ -10,6 +10,17 @@ scheduling, tenant isolation, and tests against a real PostgreSQL database.
 is the first stable portfolio release. It includes the private agenda, public booking
 page, approval and decline emails, reminders, and a local Docker Compose demo.
 
+## Backend engineering highlights
+
+- **Concurrent bookings.** PostgreSQL enforces a per-professional exclusion constraint
+  on appointment intervals. Integration tests exercise overlapping writes using
+  independent transactions.
+- **Transactional email queue.** The appointment decision and its notification are
+  committed together. A background worker locks pending rows and retries failed
+  SMTP submissions.
+- **Public booking safeguards.** A pending request temporarily holds its slot.
+  PostgreSQL-backed rate limiting and duplicate checks protect the public form.
+
 ## Capabilities
 
 - **Private agenda.** Professionals can register, authenticate with JWT, manage their
@@ -32,9 +43,11 @@ page, approval and decline emails, reminders, and a local Docker Compose demo.
 
 ## Run the demo with Docker Compose
 
-From the repository root, with Docker and the Compose plugin installed:
+With Git, Docker, and the Compose plugin installed, clone the stable release:
 
 ```bash
+git clone --branch v1.0.0 https://github.com/pedro-vieiraf/appointment-system.git
+cd appointment-system
 docker compose --profile demo up --build -d
 docker compose --profile demo logs -f app
 ```
@@ -47,9 +60,26 @@ emails and appointment reminders to Mailpit. It uses local credentials and
 loopback-only ports. Set `APP_PORT`, `POSTGRES_PORT`, or `MAILPIT_PORT` in the
 environment if a default port is already in use.
 
-1. In Swagger, use `POST /auth/register` with `fullName`, `email`, and `password`.
-   Log in through `POST /auth/login` and paste the returned `accessToken` into
-   **Authorize**.
+1. In Swagger, register a demo professional with `POST /auth/register`.
+
+   ```json
+   {
+     "fullName": "Demo Professional",
+     "email": "professional@example.test",
+     "password": "LocalDemo2026!"
+   }
+   ```
+
+   Log in with `POST /auth/login`.
+
+   ```json
+   {
+     "email": "professional@example.test",
+     "password": "LocalDemo2026!"
+   }
+   ```
+
+   Paste the returned `accessToken` into **Authorize**.
 2. [Configure availability](#1-configure-the-professionals-availability) and enable
    sharing using `PUT /users/me/availability/share`.
 3. Append the returned `bookingPath` to `http://localhost:8080`. Pick a future
