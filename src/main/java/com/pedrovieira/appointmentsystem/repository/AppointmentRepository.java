@@ -57,6 +57,10 @@ public interface AppointmentRepository
       long ownerId, LocalDateTime start, LocalDateTime end,
       AppointmentStatus excludedStatus, LocalDateTime now);
 
+  /** Checks whether the guest already has an active request with this professional. */
+  boolean existsByUserIdAndGuestEmailIgnoreCaseAndStatusAndHoldExpiresAtAfter(
+      long ownerId, String guestEmail, AppointmentStatus status, LocalDateTime now);
+
   /** Cancels expired pending holds. A null owner applies the update to every account. */
   @Modifying
   @Query(value = """

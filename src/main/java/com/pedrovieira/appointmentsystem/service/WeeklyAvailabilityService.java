@@ -84,6 +84,12 @@ public class WeeklyAvailabilityService {
     availabilityRepository.findById(ownerId).ifPresent(WeeklyAvailability::revokeSharing);
   }
 
+  /** Returns the display time zone for an active public booking page. */
+  @Transactional(readOnly = true)
+  public Optional<String> findPublicTimeZone(UUID linkId) {
+    return availabilityRepository.findByPublicLinkId(linkId).map(WeeklyAvailability::getTimeZone);
+  }
+
   /** Returns only the available intervals for an active public link. */
   @Transactional(readOnly = true)
   public Optional<List<CandidateSlot>> findPublicFreeSlots(UUID linkId, LocalDate date) {

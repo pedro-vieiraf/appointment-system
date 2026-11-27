@@ -14,7 +14,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import lombok.Getter;
 
-/** An email to deliver after the professional decides a verified booking request. */
+/** An email to deliver after the professional decides a booking request. */
 @Entity
 @Table(name = "booking_decision_notifications",
     indexes = @Index(name = "ix_booking_decision_due", columnList = "next_attempt_at,id"))
@@ -35,6 +35,8 @@ public class BookingDecisionNotification {
   @Column(nullable = false)
   private LocalDateTime appointmentStart;
 
+  private String appointmentTimeZone;
+
   @Column(name = "next_attempt_at", nullable = false)
   private Instant nextAttemptAt;
 
@@ -44,10 +46,11 @@ public class BookingDecisionNotification {
 
   /** Captures the decision as it was made so it can be sent after commit. */
   public BookingDecisionNotification(String recipient, AppointmentStatus decision,
-      LocalDateTime appointmentStart, Instant nextAttemptAt) {
+      LocalDateTime appointmentStart, String appointmentTimeZone, Instant nextAttemptAt) {
     this.recipient = recipient;
     this.decision = decision;
     this.appointmentStart = appointmentStart;
+    this.appointmentTimeZone = appointmentTimeZone;
     this.nextAttemptAt = nextAttemptAt;
   }
 

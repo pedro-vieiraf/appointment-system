@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import org.postgresql.util.PSQLException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -277,8 +278,11 @@ public class GlobalExceptionHandler {
       PublicBookingException exception, HttpServletRequest request
   ) {
     HttpStatus status = exception.getStatus();
-    return ResponseEntity.status(status)
-        .body(createErrorResponse(status, exception.getMessage(), request));
+    var response = ResponseEntity.status(status);
+    if (exception.getRetryAfterSeconds() != null) {
+      response.header(HttpHeaders.RETRY_AFTER, exception.getRetryAfterSeconds().toString());
+    }
+    return response.body(createErrorResponse(status, exception.getMessage(), request));
   }
 
   private ErrorResponse createErrorResponse(

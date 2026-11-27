@@ -8,11 +8,18 @@ import org.springframework.http.HttpStatus;
 public class PublicBookingException extends RuntimeException {
 
   private final HttpStatus status;
+  private final Long retryAfterSeconds;
 
   /** Describes why a public booking operation failed. */
   public PublicBookingException(HttpStatus status, String message) {
+    this(status, message, null);
+  }
+
+  /** Describes a temporary failure and its retry delay. */
+  public PublicBookingException(HttpStatus status, String message, Long retryAfterSeconds) {
     super(message);
     this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
   /** Reports that the professional is no longer sharing this agenda link. */
