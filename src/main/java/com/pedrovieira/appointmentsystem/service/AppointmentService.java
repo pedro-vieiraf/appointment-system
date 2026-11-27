@@ -240,7 +240,7 @@ public class AppointmentService {
   private void enqueueDecision(Appointment appointment) {
     notificationRepository.save(new BookingDecisionNotification(
         appointment.getGuestEmail(), appointment.getStatus(), appointment.getAppointmentDate(),
-        clock.instant()));
+        appointment.getBookingTimeZone(), clock.instant()));
   }
 
   private void expireHolds(User user) {

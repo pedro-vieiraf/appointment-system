@@ -78,6 +78,8 @@ public class Appointment {
   @Getter
   private String guestEmail;
 
+  private String bookingTimeZone;
+
   @Getter
   private LocalDateTime holdExpiresAt;
 
@@ -167,11 +169,17 @@ public class Appointment {
     }
   }
 
-  /** Sets the verified guest details and the deadline for a pending public request. */
-  public void holdForGuest(String name, String email, LocalDateTime expiresAt) {
+  /** Sets the guest details and the deadline for a pending public request. */
+  public void holdForGuest(String name, String email, LocalDateTime expiresAt, String timeZone) {
     guestName = name;
     guestEmail = email;
     holdExpiresAt = expiresAt;
+    bookingTimeZone = timeZone;
+  }
+
+  /** Returns the zone associated with a guest booking, defaulting to UTC for manual bookings. */
+  public String getBookingTimeZone() {
+    return bookingTimeZone == null ? "UTC" : bookingTimeZone;
   }
 
   /** Rejects changes that require an active pending request after its deadline. */

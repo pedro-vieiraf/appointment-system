@@ -5,6 +5,8 @@ import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import com.pedrovieira.appointmentsystem.repository.BookingDecisionNotificationRepository;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,8 +27,8 @@ public class BookingDecisionDispatcher {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BookingDecisionDispatcher.class);
   private static final Duration RETRY_DELAY = Duration.ofMinutes(1);
-  private static final DateTimeFormatter UTC_DATE =
-      DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm 'UTC'");
+  private static final DateTimeFormatter DISPLAY_DATE =
+      DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm");
 
   private final BookingDecisionNotificationRepository repository;
   private final JavaMailSender mailSender;
@@ -38,7 +40,7 @@ public class BookingDecisionDispatcher {
   public BookingDecisionDispatcher(
       BookingDecisionNotificationRepository repository, JavaMailSender mailSender,
       PlatformTransactionManager transactionManager, Clock clock,
-      @Value("${booking.verification.from}") String from
+      @Value("${booking.notifications.from:${booking.verification.from:}}") String from
   ) {
     this.repository = repository;
     this.mailSender = mailSender;
@@ -71,7 +73,10 @@ public class BookingDecisionDispatcher {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(from);
     message.setTo(notification.getRecipient());
-    String time = notification.getAppointmentStart().format(UTC_DATE);
+    String timeZone = notification.getAppointmentTimeZone();
+    ZoneId zone = ZoneId.of(timeZone == null ? "UTC" : timeZone);
+    String time = notification.getAppointmentStart().toInstant(ZoneOffset.UTC)
+        .atZone(zone).format(DISPLAY_DATE) + " (" + zone.getId() + ")";
     if (notification.getDecision() == AppointmentStatus.CONFIRMED) {
       message.setSubject("Seu agendamento foi confirmado");
       message.setText("O profissional confirmou sua solicitação para " + time + ".");

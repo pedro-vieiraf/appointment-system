@@ -9,7 +9,7 @@ scheduling, tenant isolation, and tests against a real PostgreSQL database.
 The latest published release is [v0.6.0](https://github.com/pedro-vieiraf/appointment-system/releases/tag/v0.6.0).
 It introduced configurable email reminders. This development snapshot also includes weekly
 availability, per-appointment duration, protection against overlapping appointments,
-revocable sharing links, and email-verified guest requests with temporary holds.
+revocable sharing links, and direct guest requests with temporary holds.
 
 ## Capabilities
 
@@ -27,7 +27,7 @@ revocable sharing links, and email-verified guest requests with temporary holds.
   PostgreSQL and SMTP. The default is 24 hours before the appointment. Multiple
   reminder offsets and an explicit opt-out are supported.
 - **Public requests.** Guests can view free slots without logging in
-  and request a slot after verifying their email. The professional can approve or
+  and request a slot without an email verification step. The professional can approve or
   decline the request using the existing appointment actions. The guest receives the
   decision by email when delivery is enabled.
 
@@ -61,7 +61,7 @@ and the standard `page`, `size`, and `sort` parameters. The default is
 
 ### Configure email
 
-Reminders, guest verification, and guest decision delivery are independently opt-in. Configure the SMTP
+Reminders and guest decision emails are independently opt-in. Configure the SMTP
 server with `SPRING_MAIL_HOST` and `SPRING_MAIL_PORT`. Set credentials and TLS through
 the Spring Boot mail configuration if your provider requires them. Use a local SMTP
 capture server when demonstrating the flow.
@@ -71,12 +71,12 @@ capture server when demonstrating the flow.
 | `REMINDERS_DELIVERY_ENABLED=true` | Enables the reminder dispatcher. |
 | `REMINDERS_FROM` | Sender address for reminder emails. |
 | `REMINDERS_POLL_INTERVAL` | PostgreSQL polling interval. Defaults to `PT1M`. |
-| `BOOKING_VERIFICATION_ENABLED=true` | Enables public booking requests and email verification. |
-| `BOOKING_VERIFICATION_BASE_URL` | App URL reachable by the guest, such as `http://localhost:8080` for a local demo. |
-| `BOOKING_VERIFICATION_FROM` | Sender address for verification emails. |
-| `BOOKING_VERIFICATION_TOKEN_TTL` | Verification link lifetime. Defaults to `PT15M`. |
-| `BOOKING_VERIFICATION_HOLD_TTL` | Maximum review window after verification. Defaults to `PT2H`. |
-| `BOOKING_NOTIFICATIONS_ENABLED=true` | Delivers decision emails using the sender in `BOOKING_VERIFICATION_FROM`. |
+| `BOOKING_REQUESTS_ENABLED=true` | Enables direct guest requests. |
+| `BOOKING_REQUESTS_HOLD_TTL` | Maximum review window. Defaults to `PT2H`. |
+| `BOOKING_REQUESTS_RATE_LIMIT` | Maximum attempts per client address and agenda. Defaults to 5. |
+| `BOOKING_REQUESTS_RATE_WINDOW` | Fixed limit window from the first attempt. Defaults to `PT15M`. |
+| `BOOKING_NOTIFICATIONS_ENABLED=true` | Delivers decision emails. |
+| `BOOKING_NOTIFICATIONS_FROM` | Sender address for decision emails. |
 | `BOOKING_NOTIFICATIONS_POLL_INTERVAL` | Decision queue polling interval. Defaults to `PT1M`. |
 
 Use ISO 8601 durations for the timing settings. With reminders enabled, a failed
@@ -114,6 +114,9 @@ left after subtracting appointments. Both return UTC start and end instants.
 UTC for slot calculations. Set `durationMinutes` to a whole number from 1 to 1,440.
 The default is 30 minutes, including for older records without a stored duration.
 When editing, omission preserves the current duration.
+Appointment responses include `appointmentStart` with an explicit offset and
+`appointmentTimeZone` for display. The existing `appointmentDate` field remains in UTC
+for API clients. Guest decision emails use the booking time zone.
 
 If an interval overlaps another appointment for the same professional, the API
 returns `409 Conflict` with a `message` that explains what to change. For reminders,
@@ -121,25 +124,29 @@ pass `reminderOffsetsMinutes`, such as `[1440, 120]`. Omission on creation defau
 to 24 hours, omission on editing preserves the settings, and `[]` turns reminders off.
 
 **Guest request.** Send authenticated
-`PUT /users/me/availability/share` to obtain a `slotsPath`. Append
+`PUT /users/me/availability/share` to obtain a `bookingPath` and a `slotsPath`.
+Open `bookingPath` on the app host to choose a date and time and submit a request
+with a name and email address. The page uses the professional's time zone and
+allows browsing when guest requests are disabled.
+
+For API clients, append
 `?date=<local-date>` and open the path on the same API host without authentication.
 The response contains only start and end times. The owner can retrieve the link
 with `GET /users/me/availability/share` or invalidate it with
 `DELETE /users/me/availability/share`. Enabling sharing again creates a new link.
 
-With guest verification enabled, send
-`POST /public/availability/{linkId}/requests` with the guest's `name`, `email`, the
-local `date`, and the exact UTC `start` returned by the slot endpoint. Open the
-verification email and submit the form. The API checks the slot again and creates
-a `PENDING` appointment only if the interval is still available. The hold lasts
-until the review deadline or the start of the appointment, whichever comes first.
-The verification result page explains expired links and scheduling conflicts. API
-clients can read the same information in the JSON `message` field.
+With guest requests enabled, send `POST /public/availability/{linkId}/requests` with
+the guest's `name`, `email`, local `date`, and the exact UTC `start` from the slot endpoint.
+A successful request returns `201 Created` and holds the slot until the review deadline
+or the appointment start, whichever comes first. An address can have only one active
+request per agenda. Requests above the rate limit return `429` and `Retry-After`.
+The rate limiter uses the network address reported by the server. Configure trusted
+proxy handling at deployment when traffic passes through a reverse proxy.
 
 ### 3. Decide the request and check the agenda
 
 Use `GET /appointments` as the professional to find the pending appointment and
-its verified guest details. Use `PATCH /appointments/{id}/confirm` to approve it,
+its guest details. Use `PATCH /appointments/{id}/confirm` to approve it,
 `PATCH /appointments/{id}/cancel` to decline or cancel it, and
 `PATCH /appointments/{id}/complete` after a confirmed appointment takes place.
 Expired holds release their intervals and are cancelled by a scheduled job. With
@@ -211,8 +218,7 @@ targeting `develop`. Open `target/site/jacoco/index.html` for the coverage repor
 
 | Priority | Remaining work |
 | --- | --- |
-| **1. Build the public booking page** | Add a page where a guest can select a date and slot, submit their details, and see actionable success or error messages. Include a reproducible portfolio demo of the guest and professional flows. |
-| **2. Prepare for public deployment** | Add rate limiting to the public email request endpoint and document deployment configuration, database migrations, and operational checks. |
+| **1. Prepare for public deployment** | Document deployment configuration, database migrations, and operational checks. |
 
 Potential follow-ups include date-specific availability overrides and one-step
 confirmation for appointments booked manually by the professional.

@@ -3,6 +3,7 @@ package com.pedrovieira.appointmentsystem;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
@@ -16,6 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,7 +29,6 @@ import com.pedrovieira.appointmentsystem.repository.BookingDecisionNotificationR
 import com.pedrovieira.appointmentsystem.service.BookingDecisionDispatcher;
 import com.pedrovieira.appointmentsystem.service.BookingExpirationService;
 import jakarta.persistence.EntityManager;
-import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -46,15 +47,14 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(properties = {
     "jwt.expiration=PT4H",
-    "booking.verification.enabled=true",
-    "booking.verification.base-url=http://localhost",
-    "booking.verification.from=booking@example.test"
+    "booking.requests.enabled=true"
 })
 @AutoConfigureMockMvc
 @Transactional
@@ -314,6 +314,17 @@ class WeeklyAvailabilityIntegrationTest {
         .andExpect(status().isNotFound());
 
     String path = enableSharing(owner);
+    String bookingPath = path.substring(0, path.length() - "/slots".length());
+    mockMvc.perform(get(PATH + "/share").header(HttpHeaders.AUTHORIZATION, owner))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bookingPath").value(bookingPath));
+    mockMvc.perform(get(bookingPath))
+        .andExpect(status().isOk())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+        .andExpect(content().string(containsString("Solicitar agendamento")))
+        .andExpect(content().string(containsString("data-booking-enabled=\"true\"")));
+    mockMvc.perform(get("/booking-assets/booking.js")).andExpect(status().isOk());
+    mockMvc.perform(get("/booking-assets/booking.css")).andExpect(status().isOk());
     assertEquals(path, enableSharing(owner));
     entityManager.flush();
     entityManager.clear();
@@ -331,6 +342,8 @@ class WeeklyAvailabilityIntegrationTest {
         .andExpect(status().isNoContent());
     mockMvc.perform(get(path).param("date", "2030-01-07"))
         .andExpect(status().isNotFound());
+    mockMvc.perform(get(bookingPath))
+        .andExpect(status().isNotFound());
     assertNotEquals(path, enableSharing(owner));
     mockMvc.perform(get(path).param("date", "2030-01-07"))
         .andExpect(status().isNotFound());
@@ -345,21 +358,13 @@ class WeeklyAvailabilityIntegrationTest {
   }
 
   @Test
-  void verifiedRequestOccupiesSlotUntilTheHoldExpires() throws Exception {
+  void directRequestOccupiesSlotUntilTheHoldExpires() throws Exception {
     Instant now = Instant.parse("2030-01-06T12:00:00Z");
     doReturn(now).when(clock).instant();
     String owner = registerAndLogin();
     String publicPath = enablePublicBooking(owner);
     String requestPath = publicPath.replace("/slots", "/requests");
-    String token = requestVerification(requestPath);
-
-    mockMvc.perform(get(requestPath + "/verify").param("token", token))
-        .andExpect(status().isOk());
-    mockMvc.perform(get(publicPath).param("date", "2030-01-07"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(1));
-
-    mockMvc.perform(post(requestPath + "/verify").param("token", token))
+    mockMvc.perform(bookingRequest(requestPath, "2030-01-07T10:00:00Z", "guest@example.test"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.expiresAt").value("2030-01-06T14:00:00Z"));
     entityManager.flush();
@@ -376,9 +381,6 @@ class WeeklyAvailabilityIntegrationTest {
     mockMvc.perform(get(publicPath).param("date", "2030-01-07"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isEmpty());
-
-    mockMvc.perform(post(requestPath + "/verify").param("token", token))
-        .andExpect(status().isNotFound());
 
     doReturn(now.plusSeconds(7200)).when(clock).instant();
     mockMvc.perform(get(publicPath).param("date", "2030-01-07"))
@@ -398,46 +400,42 @@ class WeeklyAvailabilityIntegrationTest {
   }
 
   @Test
-  void expiredEmailVerificationDoesNotReserveTheSlot() throws Exception {
-    Instant now = Instant.parse("2030-01-06T12:00:00Z");
-    doReturn(now).when(clock).instant();
-    String publicPath = enablePublicBooking(registerAndLogin());
-    String requestPath = publicPath.replace("/slots", "/requests");
-    String token = requestVerification(requestPath);
-
-    doReturn(now.plusSeconds(900)).when(clock).instant();
-    mockMvc.perform(post(requestPath + "/verify").param("token", token))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.message").value(containsString("Solicite um novo link")));
-    mockMvc.perform(get(requestPath + "/verify").param("token", token))
-        .andExpect(status().isNotFound())
-        .andExpect(content().string(containsString("Solicite um novo link")));
-    mockMvc.perform(get(publicPath).param("date", "2030-01-07"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(1));
+  void pendingEmailCannotHoldAnotherSlotEvenWithDifferentCase() throws Exception {
+    doReturn(Instant.parse("2030-01-06T12:00:00Z")).when(clock).instant();
+    String owner = registerAndLogin();
+    String path = enablePublicBooking(owner, "UTC", "10:00", "11:00")
+        .replace("/slots", "/requests");
+    mockMvc.perform(bookingRequest(path, "2030-01-07T10:00:00Z", "Guest@example.test"))
+        .andExpect(status().isCreated());
+    mockMvc.perform(bookingRequest(path, "2030-01-07T10:30:00Z", "guest@example.test"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.message").value(containsString("Já existe")));
   }
 
   @Test
-  void occupiedBookingSlotExplainsTheConflictInHtmlAndJson() throws Exception {
-    doReturn(Instant.parse("2030-01-06T12:00:00Z")).when(clock).instant();
+  void rateLimitCountsConflictsAndResetsAfterTheWindow() throws Exception {
+    Instant now = Instant.parse("2030-01-06T12:00:00Z");
+    doReturn(now).when(clock).instant();
     String owner = registerAndLogin();
-    String requestPath = enablePublicBooking(owner).replace("/slots", "/requests");
-    String token = requestVerification(requestPath);
+    String path = enablePublicBooking(owner).replace("/slots", "/requests");
     createAppointment(owner, "2030-01-07T10:00:00", 30);
 
-    mockMvc.perform(post(requestPath + "/verify")
-            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .accept(MediaType.TEXT_HTML)
-            .param("token", token))
-        .andExpect(status().isConflict())
-        .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
-        .andExpect(content().string(containsString("escolha outro horário")));
+    for (int attempt = 0; attempt < 5; attempt++) {
+      mockMvc.perform(bookingRequest(path, "2030-01-07T10:00:00Z", "guest@example.test"))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.message").value(containsString("escolha outro horário")));
+    }
+    mockMvc.perform(bookingRequest(path, "2030-01-07T10:00:00Z", "guest@example.test")
+            .header("X-Forwarded-For", "192.0.2.20"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+    mockMvc.perform(bookingRequest(path, "2030-01-07T10:00:00Z", "guest@example.test")
+            .with(request -> { request.setRemoteAddr("192.0.2.21"); return request; }))
+        .andExpect(status().isConflict());
 
-    mockMvc.perform(post(requestPath + "/verify")
-            .accept(MediaType.APPLICATION_JSON)
-            .param("token", token))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.message").value(containsString("escolha outro horário")));
+    doReturn(now.plusSeconds(900)).when(clock).instant();
+    mockMvc.perform(bookingRequest(path, "2030-01-07T10:00:00Z", "guest@example.test"))
+        .andExpect(status().isConflict());
   }
 
   @ParameterizedTest
@@ -445,19 +443,22 @@ class WeeklyAvailabilityIntegrationTest {
       "confirm,CONFIRMED,Seu agendamento foi confirmado",
       "cancel,CANCELLED,Sua solicitação de agendamento foi recusada"
   })
-  void decidingVerifiedRequestQueuesAndRetriesEmail(
+  void decidingPublicRequestQueuesAndRetriesEmail(
       String action, String decision, String subject
   ) throws Exception {
     Instant now = Instant.parse("2030-01-06T12:00:00Z");
     doReturn(now).when(clock).instant();
     String owner = registerAndLogin();
-    String requestPath = enablePublicBooking(owner).replace("/slots", "/requests");
-    String token = requestVerification(requestPath);
-    mockMvc.perform(post(requestPath + "/verify").param("token", token))
+    String requestPath = enablePublicBooking(owner, "America/Sao_Paulo", "15:00", "15:30")
+        .replace("/slots", "/requests");
+    mockMvc.perform(bookingRequest(requestPath, "2030-01-07T18:00:00Z", "guest@example.test"))
         .andExpect(status().isCreated());
     String page = mockMvc.perform(get("/appointments")
             .header(HttpHeaders.AUTHORIZATION, owner))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].appointmentDate").value("2030-01-07T18:00:00"))
+        .andExpect(jsonPath("$.content[0].appointmentStart").value("2030-01-07T15:00:00-03:00"))
+        .andExpect(jsonPath("$.content[0].appointmentTimeZone").value("America/Sao_Paulo"))
         .andReturn().getResponse().getContentAsString();
     long appointmentId = jsonMapper.readTree(page).required("content")
         .required(0).required("id").asLong();
@@ -493,40 +494,35 @@ class WeeklyAvailabilityIntegrationTest {
     verify(mailSender, times(2)).send(message.capture());
     assertEquals("guest@example.test", message.getValue().getTo()[0]);
     assertEquals(subject, message.getValue().getSubject());
+    assertTrue(message.getValue().getText().contains("às 15:00 (America/Sao_Paulo)"));
   }
 
   private String enablePublicBooking(String owner) throws Exception {
+    return enablePublicBooking(owner, "UTC", "10:00", "10:30");
+  }
+
+  private String enablePublicBooking(String owner, String timeZone, String start, String end)
+      throws Exception {
     mockMvc.perform(put(PATH)
             .header(HttpHeaders.AUTHORIZATION, owner)
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
-                  "timeZone":"UTC", "durationMinutes":30,
-                  "windows":[{"dayOfWeek":"MONDAY","start":"10:00","end":"10:30"}]
+                  "timeZone":"%s", "durationMinutes":30,
+                  "windows":[{"dayOfWeek":"MONDAY","start":"%s","end":"%s"}]
                 }
-                """))
+                """.formatted(timeZone, start, end)))
         .andExpect(status().isOk());
     return enableSharing(owner);
   }
 
-  private String requestVerification(String requestPath) throws Exception {
-    mockMvc.perform(post(requestPath)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "name":"Guest Customer", "email":"guest@example.test",
-                  "date":"2030-01-07", "start":"2030-01-07T10:00:00Z"
-                }
-                """))
-        .andExpect(status().isAccepted());
-
-    ArgumentCaptor<SimpleMailMessage> message = ArgumentCaptor.forClass(SimpleMailMessage.class);
-    verify(mailSender).send(message.capture());
-    assertEquals("guest@example.test", message.getValue().getTo()[0]);
-    String text = message.getValue().getText();
-    URI link = URI.create(text.substring(text.lastIndexOf(' ') + 1));
-    assertEquals(requestPath + "/verify", link.getPath());
-    return link.getQuery().substring("token=".length());
+  private MockHttpServletRequestBuilder bookingRequest(String path, String start, String email) {
+    return post(path).contentType(MediaType.APPLICATION_JSON).content("""
+        {
+          "name":"Guest Customer", "email":"%s",
+          "date":"2030-01-07", "start":"%s"
+        }
+        """.formatted(email, start));
   }
 
   private String registerAndLogin() throws Exception {

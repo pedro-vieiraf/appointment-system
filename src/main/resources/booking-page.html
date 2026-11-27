@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Solicitar agendamento</title>
+  <link rel="stylesheet" href="/booking-assets/booking.css">
+  <script src="/booking-assets/booking.js" defer></script>
+</head>
+<body>
+  <main class="booking" data-link-id="{{LINK_ID}}" data-time-zone="{{TIME_ZONE}}"
+        data-booking-enabled="{{BOOKING_ENABLED}}" data-fixed-offset="{{FIXED_OFFSET}}">
+    <header>
+      <h1>Solicitar agendamento</h1>
+      <p>Escolha um horário disponível e envie sua solicitação ao profissional.</p>
+    </header>
+    <div class="layout">
+      <section aria-labelledby="availability-heading">
+        <h2 id="availability-heading">Horários disponíveis</h2>
+        <label for="date">Data</label>
+        <input id="date" type="date" required>
+        <p class="muted">Fuso da agenda <span id="time-zone">{{TIME_ZONE}}</span></p>
+        <p id="slot-status" role="status"></p>
+        <button id="reload" type="button" hidden>Consultar novamente</button>
+        <fieldset id="slots" hidden>
+          <legend>Escolha um horário</legend>
+          <div id="slot-options" class="slots"></div>
+        </fieldset>
+      </section>
+      <section aria-labelledby="contact-heading">
+        <h2 id="contact-heading">Seus dados</h2>
+        <p id="booking-disabled" role="status" hidden>
+          A agenda está disponível para consulta, mas não está recebendo solicitações.
+        </p>
+        <form id="booking-form">
+          <label for="name">Nome</label>
+          <input id="name" name="name" autocomplete="name" maxlength="100" required>
+          <label for="email">E-mail</label>
+          <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <p id="chosen-slot" class="muted" aria-live="polite">Escolha um horário na agenda.</p>
+          <button id="submit" type="submit" disabled>Enviar solicitação</button>
+        </form>
+        <p id="booking-status" role="status" aria-live="polite" tabindex="-1"></p>
+      </section>
+    </div>
+    <noscript>Ative o JavaScript para consultar horários e enviar uma solicitação.</noscript>
+  </main>
+</body>
+</html>

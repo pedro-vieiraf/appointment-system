@@ -1,0 +1,38 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  background: #eef4f2;
+  color: #172d27;
+  line-height: 1.5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.booking { max-width: 65rem; margin: 0 auto; padding: clamp(1rem, 5vw, 4rem); }
+header { margin-bottom: 1.75rem; }
+h1 { font-size: clamp(1.8rem, 5vw, 2.7rem); margin: 0; line-height: 1.15; }
+header p, .muted { color: #425b53; }
+.layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+section { padding: clamp(1rem, 3vw, 1.6rem); background: #fff; border-radius: 1rem; }
+h2 { margin: 0 0 1rem; font-size: 1.3rem; }
+label, legend { font-weight: 650; }
+input:not([type="radio"]) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: .35rem 0 .9rem;
+  padding: .65rem;
+  background: #fff;
+  border: 1px solid #758d83;
+  border-radius: .45rem;
+}
+fieldset { padding: 0; border: 0; margin: 1rem 0 0; }
+.slots { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.slots label { display: flex; align-items: center; gap: .45rem; padding: .55rem; border-radius: .45rem; border: 1px solid #758d83; cursor: pointer; }
+.slots label:has(input:checked) { background: #def3e9; border-color: #0c654b; }
+button { padding: .7rem 1rem; border: 0; border-radius: .45rem; background: #0c654b; color: white; font-weight: 650; cursor: pointer; }
+button:disabled { background: #d4dfdb; color: #435951; cursor: default; }
+input, button { font: inherit; }
+:focus-visible { outline: 3px solid #ac5727; outline-offset: 3px; }
+#booking-status[data-error="true"] { color: #90291a; }
+[hidden] { display: none !important; }
+@media (max-width: 44rem) { .layout { grid-template-columns: 1fr; } }
