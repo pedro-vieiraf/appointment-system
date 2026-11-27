@@ -6,10 +6,9 @@ scheduling, tenant isolation, and tests against a real PostgreSQL database.
 
 ## Project status
 
-The latest published release is [v0.6.0](https://github.com/pedro-vieiraf/appointment-system/releases/tag/v0.6.0).
-It introduced configurable email reminders. This development snapshot also includes weekly
-availability, per-appointment duration, protection against overlapping appointments,
-revocable sharing links, and direct guest requests with temporary holds.
+[v1.0.0](https://github.com/pedro-vieiraf/appointment-system/releases/tag/v1.0.0)
+is the first stable portfolio release. It includes the private agenda, public booking
+page, approval and decline emails, reminders, and a local Docker Compose demo.
 
 ## Capabilities
 
@@ -31,29 +30,51 @@ revocable sharing links, and direct guest requests with temporary holds.
   decline the request using the existing appointment actions. The guest receives the
   decision by email when delivery is enabled.
 
-## Run locally
+## Run the demo with Docker Compose
 
-Requirements are Java 21, a PostgreSQL 17 instance, and network access to Maven
-repositories on the first build. The Maven Wrapper is included. Docker Compose is
-an option for running PostgreSQL.
+From the repository root, with Docker and the Compose plugin installed:
+
+```bash
+docker compose --profile demo up --build -d
+docker compose --profile demo logs -f app
+```
+
+Wait for the application startup message, then open
+[Swagger UI](http://localhost:8080/swagger-ui/index.html) and
+[Mailpit](http://localhost:8025/). The first build downloads the container images
+and Maven dependencies. The demo enables public requests and routes guest decision
+emails and appointment reminders to Mailpit. It uses local credentials and
+loopback-only ports. Set `APP_PORT`, `POSTGRES_PORT`, or `MAILPIT_PORT` in the
+environment if a default port is already in use.
+
+1. In Swagger, use `POST /auth/register` with `fullName`, `email`, and `password`.
+   Log in through `POST /auth/login` and paste the returned `accessToken` into
+   **Authorize**.
+2. [Configure availability](#1-configure-the-professionals-availability) and enable
+   sharing using `PUT /users/me/availability/share`.
+3. Append the returned `bookingPath` to `http://localhost:8080`. Pick a future
+   date covered by the schedule, choose a time, and submit with a test name and
+   email address. The page confirms that the request is pending.
+4. In Swagger, find the request with `GET /appointments` and approve it with
+   `PATCH /appointments/{id}/confirm`. Verify the status and local appointment
+   time, then check Mailpit for the decision email.
+
+Stop the demo with `docker compose --profile demo down`. PostgreSQL data is kept
+in the Compose volume.
+
+### Run the backend from source
+
+Use Java 21 and PostgreSQL 17. Run the database and application from the repository root:
 
 ```bash
 docker compose up -d postgres
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Run these commands from the repository root. An existing PostgreSQL installation works
-too. The `dev` profile expects the `appointment_system` database at `localhost:5432`.
-Override the connection with `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`,
-and `SPRING_DATASOURCE_PASSWORD` as needed. Use a strong, deployment-specific
-`JWT_SECRET` outside local development.
-
-- [Swagger UI](http://localhost:8080/swagger-ui/index.html)
-- [OpenAPI document](http://localhost:8080/v3/api-docs)
-
-Swagger is enabled by the `dev` profile. Register with `POST /auth/register`, log in
-with `POST /auth/login`, and paste the returned `accessToken` into **Authorize** to
-try protected routes.
+The `dev` profile expects `appointment_system` at `localhost:5432`.
+Override the connection using `SPRING_DATASOURCE_URL`,
+`SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD`.
+To enable booking and delivery outside the demo, use the settings below.
 
 The appointment list supports `title`, inclusive `startDate` and `endDate`,
 and the standard `page`, `size`, and `sort` parameters. The default is
