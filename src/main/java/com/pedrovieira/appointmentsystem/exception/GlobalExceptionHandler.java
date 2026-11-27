@@ -11,7 +11,12 @@ import com.pedrovieira.appointmentsystem.exception.users.InvalidCredentialsExcep
 import com.pedrovieira.appointmentsystem.exception.users.InvalidPasswordException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import org.postgresql.util.PSQLException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -215,6 +220,69 @@ public class GlobalExceptionHandler {
       HttpServletRequest request
   ) {
     return createErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+  }
+
+  /**
+   * Maps a slot collision detected by PostgreSQL to the existing conflict response.
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleAppointmentSlotCollision(
+      DataIntegrityViolationException exception,
+      HttpServletRequest request
+  ) {
+    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+      if (cause instanceof PSQLException violation
+          && "23P01".equals(violation.getSQLState())
+          && violation.getServerErrorMessage() != null
+          && "ex_appointments_user_active_interval"
+              .equals(violation.getServerErrorMessage().getConstraint())) {
+        return createErrorResponse(
+            HttpStatus.CONFLICT,
+            "Esse intervalo coincide com outro agendamento. Escolha outro horário ou duração.",
+            request);
+      }
+    }
+    throw exception;
+  }
+
+  /**
+   * Reports a write based on an appointment version that has since changed.
+   */
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleConcurrentAppointmentChange(
+      OptimisticLockingFailureException exception,
+      HttpServletRequest request
+  ) {
+    return createErrorResponse(
+        HttpStatus.CONFLICT,
+        "O agendamento foi alterado enquanto você editava. Atualize a agenda e tente novamente.",
+        request);
+  }
+
+  /**
+   * Maps invalid weekly working hours to a bad request.
+   */
+  @ExceptionHandler(InvalidAvailabilityException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleInvalidAvailability(
+      InvalidAvailabilityException exception, HttpServletRequest request
+  ) {
+    return createErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+  }
+
+  /** Returns an actionable public booking error in the standard format. */
+  @ExceptionHandler(PublicBookingException.class)
+  public ResponseEntity<ErrorResponse> handlePublicBooking(
+      PublicBookingException exception, HttpServletRequest request
+  ) {
+    HttpStatus status = exception.getStatus();
+    var response = ResponseEntity.status(status);
+    if (exception.getRetryAfterSeconds() != null) {
+      response.header(HttpHeaders.RETRY_AFTER, exception.getRetryAfterSeconds().toString());
+    }
+    return response.body(createErrorResponse(status, exception.getMessage(), request));
   }
 
   private ErrorResponse createErrorResponse(

@@ -4,16 +4,21 @@ import com.pedrovieira.appointmentsystem.dto.request.AppointmentRequest;
 import com.pedrovieira.appointmentsystem.dto.request.AppointmentSearchCriteria;
 import com.pedrovieira.appointmentsystem.dto.request.UpdateAppointmentRequest;
 import com.pedrovieira.appointmentsystem.entity.Appointment;
+import com.pedrovieira.appointmentsystem.entity.BookingDecisionNotification;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import com.pedrovieira.appointmentsystem.exception.BusinessRuleException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentConflictException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateInPastException;
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
+import com.pedrovieira.appointmentsystem.repository.BookingDecisionNotificationRepository;
+import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import com.pedrovieira.appointmentsystem.repository.specification.AppointmentSpecification;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -31,25 +36,31 @@ import org.springframework.transaction.annotation.Transactional;
 public class AppointmentService {
 
   private final AppointmentRepository appointmentRepository;
+  private final UserRepository userRepository;
+  private final BookingDecisionNotificationRepository notificationRepository;
   private final Clock clock;
 
   /**
    * Create Appointment.
    */
+  @Transactional
   public Appointment create(
       User user,
       AppointmentRequest request
   ) {
-    if (request.appointmentDate().isBefore(LocalDateTime.now(clock))) {
+    if (!request.appointmentDate().isAfter(LocalDateTime.now(clock))) {
       throw new BusinessRuleException("Appointment date is before current date");
     }
 
-    if (appointmentRepository.existsByUserAndAppointmentDate(
+    lockSchedule(user);
+    expireHolds(user);
+    if (appointmentRepository.existsByUserAndAppointmentDateAndStatusNot(
         user,
-        request.appointmentDate()
+        request.appointmentDate(),
+        AppointmentStatus.CANCELLED
     )) {
       throw new BusinessRuleException(
-          "User already has an appointment at this time"
+          "Você já tem um agendamento nesse horário. Escolha outro horário."
       );
     }
 
@@ -79,24 +90,30 @@ public class AppointmentService {
       UpdateAppointmentRequest request
   ) {
     Appointment appointment = getById(user, id);
+    lockSchedule(user);
+    final LocalDateTime now = LocalDateTime.now(clock);
+    appointment.requireUnexpiredHold(now);
 
     if (request.appointmentDate() != null
-        && request.appointmentDate().isBefore(LocalDateTime.now())) {
+        && !request.appointmentDate().isAfter(now)) {
 
       throw new AppointmentDateInPastException(
           "Appointment date must be in the future."
       );
     }
 
+    expireHolds(user);
     if (request.appointmentDate() != null
-        && appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
+        && appointment.getStatus() != AppointmentStatus.CANCELLED
+        && appointmentRepository.existsByUserAndAppointmentDateAndIdNotAndStatusNot(
         user,
         request.appointmentDate(),
-        id
+        id,
+        AppointmentStatus.CANCELLED
     )) {
 
       throw new AppointmentConflictException(
-          "Appointment date conflicts with another appointment."
+          "Esse horário coincide com outro agendamento. Escolha outro horário."
       );
     }
 
@@ -113,6 +130,10 @@ public class AppointmentService {
       appointment.setDescription(request.description());
     }
 
+    if (request.durationMinutes() != null) {
+      appointment.changeDuration(request.durationMinutes());
+    }
+
     boolean appointmentDateChanged = request.appointmentDate() != null
         && !request.appointmentDate().equals(appointment.getAppointmentDate());
     if (appointmentDateChanged) {
@@ -121,7 +142,7 @@ public class AppointmentService {
 
     if (appointmentDateChanged || request.reminderOffsetsMinutes() != null) {
       appointment.refreshReminderSchedule(
-          LocalDateTime.now(clock), appointmentDateChanged, previousOffsets);
+          now, appointmentDateChanged, previousOffsets);
     }
 
     return appointmentRepository.save(appointment);
@@ -130,9 +151,11 @@ public class AppointmentService {
   /**
    * Delete Appointment.
    */
+  @Transactional
   public void delete(User user, Long id) {
     Appointment appointment = getById(user, id);
 
+    lockSchedule(user);
     appointmentRepository.delete(appointment);
   }
 
@@ -167,6 +190,7 @@ public class AppointmentService {
     Appointment appointment =
         getById(user, appointmentId);
 
+    lockSchedule(user);
     appointment.markAsCompleted();
 
     return appointmentRepository.save(appointment);
@@ -180,8 +204,14 @@ public class AppointmentService {
     Appointment appointment =
         getById(user, appointmentId);
 
+    lockSchedule(user);
+    LocalDateTime now = LocalDateTime.now(clock);
+    appointment.requireUnexpiredHold(now);
     appointment.markAsConfirmed();
-    appointment.refreshReminderSchedule(LocalDateTime.now(clock), false, List.of());
+    appointment.refreshReminderSchedule(now, false, List.of());
+    if (appointment.getGuestEmail() != null) {
+      enqueueDecision(appointment);
+    }
 
     return appointmentRepository.save(appointment);
   }
@@ -194,8 +224,34 @@ public class AppointmentService {
     Appointment appointment =
         getById(user, appointmentId);
 
+    lockSchedule(user);
+    boolean decliningGuestRequest = appointment.getStatus() == AppointmentStatus.PENDING
+        && appointment.getGuestEmail() != null
+        && appointment.getHoldExpiresAt() != null
+        && appointment.getHoldExpiresAt().isAfter(LocalDateTime.now(clock));
     appointment.markAsCanceled();
+    if (decliningGuestRequest) {
+      enqueueDecision(appointment);
+    }
 
     return appointmentRepository.save(appointment);
+  }
+
+  private void enqueueDecision(Appointment appointment) {
+    notificationRepository.save(new BookingDecisionNotification(
+        appointment.getGuestEmail(), appointment.getStatus(), appointment.getAppointmentDate(),
+        appointment.getBookingTimeZone(), clock.instant()));
+  }
+
+  private void expireHolds(User user) {
+    Long ownerId = user.getId();
+    if (ownerId != null) {
+      appointmentRepository.expirePendingHolds(
+          ownerId, LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
+    }
+  }
+
+  private void lockSchedule(User user) {
+    userRepository.findForSchedulingUpdateById(user.getId());
   }
 }

@@ -2,10 +2,14 @@ package com.pedrovieira.appointmentsystem.repository;
 
 import com.pedrovieira.appointmentsystem.entity.Appointment;
 import com.pedrovieira.appointmentsystem.entity.User;
+import com.pedrovieira.appointmentsystem.entity.enums.AppointmentStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -19,7 +23,11 @@ public interface AppointmentRepository
   /**
    * Verify if time is taken to new appointments.
    */
-  boolean existsByUserAndAppointmentDate(User attr0, LocalDateTime attr1);
+  boolean existsByUserAndAppointmentDateAndStatusNot(
+      User user,
+      LocalDateTime appointmentDate,
+      AppointmentStatus excludedStatus
+  );
 
   /**
    * Get by ID by user.
@@ -29,9 +37,37 @@ public interface AppointmentRepository
   /**
    * Verify if another appointment exists at the given time.
    */
-  boolean existsByUserAndAppointmentDateAndIdNot(
+  boolean existsByUserAndAppointmentDateAndIdNotAndStatusNot(
       User user,
       LocalDateTime appointmentDate,
-      Long id
+      Long id,
+      AppointmentStatus excludedStatus
   );
+
+  /**
+   * Finds non-cancelled appointments whose start could affect the requested slot range.
+   */
+  @Query("""
+      select a from Appointment a
+      where a.user.id = :ownerId and a.status <> :excludedStatus
+        and a.appointmentDate >= :start and a.appointmentDate < :end
+        and (a.holdExpiresAt is null or a.holdExpiresAt > :now)
+      """)
+  List<Appointment> findSlotOccupants(
+      long ownerId, LocalDateTime start, LocalDateTime end,
+      AppointmentStatus excludedStatus, LocalDateTime now);
+
+  /** Checks whether the guest already has an active request with this professional. */
+  boolean existsByUserIdAndGuestEmailIgnoreCaseAndStatusAndHoldExpiresAtAfter(
+      long ownerId, String guestEmail, AppointmentStatus status, LocalDateTime now);
+
+  /** Cancels expired pending holds. A null owner applies the update to every account. */
+  @Modifying
+  @Query(value = """
+      update appointments
+      set status = 'CANCELLED', updated_at = :now, version = version + 1
+      where status = 'PENDING' and hold_expires_at <= :now
+        and (cast(:ownerId as bigint) is null or user_id = :ownerId)
+      """, nativeQuery = true)
+  void expirePendingHolds(Long ownerId, LocalDateTime now);
 }

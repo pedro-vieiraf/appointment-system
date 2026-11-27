@@ -3,6 +3,7 @@ package com.pedrovieira.appointmentsystem;
 import static org.hamcrest.Matchers.contains;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -26,13 +27,17 @@ import com.pedrovieira.appointmentsystem.dto.response.AppointmentResponse;
 import com.pedrovieira.appointmentsystem.dto.response.LoginResponse;
 import com.pedrovieira.appointmentsystem.repository.AppointmentReminderRepository;
 import com.pedrovieira.appointmentsystem.service.AppointmentReminderDispatcher;
+import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +49,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -53,6 +59,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(properties = "jwt.expiration=15m")
@@ -540,6 +547,288 @@ class AppointmentFlowIntegrationTest {
     assertTrue(messages.getAllValues().get(1).getText()
         .contains(newDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
     assertEquals(List.of(), scheduledTimes(appointmentId));
+  }
+
+  @Test
+  void concurrentCreatesAllowOnlyOneAppointmentInTheSameSlot() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    LocalDateTime slot = LocalDateTime.now(ZoneOffset.UTC).plusDays(4).withNano(0);
+    String request = jsonMapper.writeValueAsString(
+        new AppointmentRequest("Math lesson", null, slot));
+
+    Callable<Integer> create = () -> mockMvc.perform(post("/appointments")
+            .header(HttpHeaders.AUTHORIZATION, authorization)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(request))
+        .andReturn().getResponse().getStatus();
+
+    assertEquals(List.of(201, 409), runCompetingWrites(create, create));
+    assertEquals(1, appointmentsAt(ownerEmail, slot));
+  }
+
+  @Test
+  void concurrentReschedulesAllowOnlyOneOfTwoOverlappingIntervals() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    LocalDateTime slot = LocalDateTime.now(ZoneOffset.UTC).plusDays(4).withNano(0);
+    LocalDateTime firstDate = slot.minusDays(1);
+    LocalDateTime secondDate = slot.plusDays(1);
+    long firstId = createAppointment(authorization,
+        new AppointmentRequest("Math lesson", null, firstDate));
+    long secondId = createAppointment(authorization,
+        new AppointmentRequest("Geometry lesson", null, secondDate));
+    String firstRequest = jsonMapper.writeValueAsString(Map.of("appointmentDate", slot));
+    String secondRequest = jsonMapper.writeValueAsString(
+        Map.of("appointmentDate", slot.plusMinutes(15)));
+
+    assertEquals(List.of(200, 409), runCompetingWrites(
+        () -> rescheduleStatus(authorization, firstId, firstRequest),
+        () -> rescheduleStatus(authorization, secondId, secondRequest)));
+    assertEquals(1, appointmentsAt(ownerEmail, slot)
+        + appointmentsAt(ownerEmail, slot.plusMinutes(15)));
+    assertEquals(1, appointmentsAt(ownerEmail, firstDate) + appointmentsAt(ownerEmail, secondDate));
+  }
+
+  @Test
+  void cancellationFreesTheSlotForCreationAndRescheduling() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    String otherAuthorization = registerAndLogin("Other Account", otherEmail);
+    LocalDateTime slot = LocalDateTime.now(ZoneOffset.UTC).plusDays(4).withNano(0);
+    AppointmentRequest request = new AppointmentRequest("Math lesson", null, slot);
+    long originalId = createAppointment(authorization, request);
+    createAppointment(otherAuthorization, request);
+    cancelAppointment(authorization, originalId);
+
+    long replacementId = createAppointment(authorization, request);
+    cancelAppointment(authorization, replacementId);
+    long movedId = createAppointment(authorization,
+        new AppointmentRequest("Geometry lesson", null, slot.plusDays(1)));
+
+    assertEquals(200, rescheduleStatus(authorization, movedId,
+        jsonMapper.writeValueAsString(Map.of("appointmentDate", slot))));
+    assertEquals(1, appointmentsAt(ownerEmail, slot));
+    assertEquals(1, appointmentsAt(otherEmail, slot));
+  }
+
+  @Test
+  void concurrentCancellationAndRescheduleCannotOverwriteEachOther() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    LocalDateTime originalDate = LocalDateTime.now(ZoneOffset.UTC).plusDays(4).withNano(0);
+    LocalDateTime newDate = originalDate.plusDays(1);
+    long id = createAppointment(authorization,
+        new AppointmentRequest("Math lesson", null, originalDate));
+    String request = jsonMapper.writeValueAsString(Map.of("appointmentDate", newDate));
+
+    Callable<Integer> cancel = () -> mockMvc.perform(patch("/appointments/{id}/cancel", id)
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andReturn().getResponse().getStatus();
+
+    assertEquals(List.of(200, 409), runCompetingWrites(
+        cancel, () -> rescheduleStatus(authorization, id, request)));
+
+    String response = mockMvc.perform(get("/appointments/{id}", id)
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andExpect(status().isOk())
+        .andReturn().getResponse().getContentAsString();
+    AppointmentResponse appointment = jsonMapper.readValue(response, AppointmentResponse.class);
+    LocalDateTime winningDate = switch (appointment.status()) {
+      case CANCELLED -> originalDate;
+      case PENDING -> newDate;
+      default -> throw new AssertionError("Unexpected appointment status");
+    };
+    assertEquals(winningDate, appointment.appointmentDate());
+  }
+
+  @Test
+  void rescheduleRejectsADateInThePastAccordingToTheApplicationClock() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC).withNano(0);
+    long id = createAppointment(authorization,
+        new AppointmentRequest("Math lesson", null, now.plusDays(5)));
+    doReturn(now.plusDays(3).toInstant(ZoneOffset.UTC)).when(clock).instant();
+
+    assertEquals(400, rescheduleStatus(authorization, id,
+        jsonMapper.writeValueAsString(Map.of("appointmentDate", now.plusDays(2)))));
+  }
+
+  @Test
+  void overlappingCreatesAreRejectedButAdjacentAndCancelledSlotsCanBeUsed() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    LocalDateTime start = LocalDateTime.now(ZoneOffset.UTC).plusDays(4).withNano(0);
+    long firstId = createAppointment(authorization,
+        new AppointmentRequest("First lesson", null, start, null, 90));
+
+    AppointmentRequest overlapping =
+        new AppointmentRequest("Second lesson", null, start.plusMinutes(30), null, 30);
+    assertEquals(409, createStatus(authorization, overlapping));
+
+    createAppointment(authorization,
+        new AppointmentRequest("Adjacent lesson", null, start.plusMinutes(90), null, 30));
+    cancelAppointment(authorization, firstId);
+    assertEquals(201, createStatus(authorization, overlapping));
+  }
+
+  @Test
+  void reschedulingOrIncreasingDurationCannotOverlapAnotherAppointment() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    LocalDateTime start = LocalDateTime.now(ZoneOffset.UTC).plusDays(4).withNano(0);
+    long firstId = createAppointment(authorization,
+        new AppointmentRequest("First lesson", null, start, null, 30));
+    long secondId = createAppointment(authorization,
+        new AppointmentRequest("Second lesson", null, start.plusMinutes(45), null, 30));
+
+    assertEquals(409, rescheduleStatus(authorization, secondId,
+        jsonMapper.writeValueAsString(Map.of("appointmentDate", start.plusMinutes(15)))));
+    assertEquals(409, rescheduleStatus(authorization, firstId,
+        jsonMapper.writeValueAsString(Map.of("durationMinutes", 60))));
+
+    mockMvc.perform(get("/appointments/{id}", firstId)
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.durationMinutes").value(30));
+    assertEquals(1, appointmentsAt(ownerEmail, start.plusMinutes(45)));
+  }
+
+  @Test
+  void concurrentWritesWithDifferentStartsCannotReserveOverlappingIntervals() throws Exception {
+    String authorization = registerAndLogin("Appointment Owner", ownerEmail);
+    LocalDateTime start = LocalDateTime.now(ZoneOffset.UTC).plusDays(4).withNano(0);
+    AppointmentRequest first = new AppointmentRequest("First lesson", null, start, null, 60);
+    AppointmentRequest second =
+        new AppointmentRequest("Second lesson", null, start.plusMinutes(30), null, 60);
+
+    assertEquals(List.of(201, 409), runCompetingWrites(
+        () -> createStatus(authorization, first), () -> createStatus(authorization, second)));
+    assertEquals(1, appointmentsAt(ownerEmail, start)
+        + appointmentsAt(ownerEmail, start.plusMinutes(30)));
+  }
+
+  @Test
+  void intervalConstraintUpgradeReportsLegacyOverlapsWithoutDeletingRecords() throws Exception {
+    String script = new ClassPathResource("appointment-slot-constraints.sql")
+        .getContentAsString(StandardCharsets.UTF_8);
+    String sql = script.substring(0, script.lastIndexOf("^^^"));
+    try (var connection = jdbcTemplate.getDataSource().getConnection();
+         var statement = connection.createStatement()) {
+      connection.setAutoCommit(false);
+      try {
+        statement.execute("""
+            create temporary table appointments (
+              id bigint primary key,
+              user_id bigint not null,
+              appointment_date timestamp not null,
+              status varchar not null,
+              duration_minutes integer
+            )
+            """);
+        statement.execute("""
+            create unique index ux_appointments_user_active_slot on appointments
+                (user_id, appointment_date) where status <> 'CANCELLED'
+            """);
+        statement.execute("""
+            insert into appointments values
+                (1, 42, '2030-01-07 10:00:00', 'CONFIRMED', null),
+                (2, 42, '2030-01-07 10:15:00', 'PENDING', null)
+            """);
+        var beforeUpgrade = connection.setSavepoint();
+
+        SQLException conflict = assertThrows(SQLException.class, () -> statement.execute(sql));
+        assertEquals("23P01", conflict.getSQLState());
+        connection.rollback(beforeUpgrade);
+
+        try (var rows = statement.executeQuery("""
+            select count(*), count(duration_minutes),
+                to_regclass('pg_temp.ux_appointments_user_active_slot') is not null
+            from appointments
+            """)) {
+          assertTrue(rows.next());
+          assertEquals(2, rows.getInt(1));
+          assertEquals(0, rows.getInt(2));
+          assertTrue(rows.getBoolean(3));
+        }
+
+        statement.execute("update appointments set status = 'CANCELLED' where id = 2");
+        statement.execute(sql);
+        statement.execute(sql);
+        try (var rows = statement.executeQuery("select count(*) from appointments")) {
+          assertTrue(rows.next());
+          assertEquals(2, rows.getInt(1));
+        }
+      } finally {
+        connection.rollback();
+      }
+    }
+  }
+
+  private int createStatus(String authorization, AppointmentRequest request) throws Exception {
+    return mockMvc.perform(post("/appointments")
+            .header(HttpHeaders.AUTHORIZATION, authorization)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(jsonMapper.writeValueAsString(request)))
+        .andReturn().getResponse().getStatus();
+  }
+
+  private void cancelAppointment(String authorization, long id) throws Exception {
+    mockMvc.perform(patch("/appointments/{id}/cancel", id)
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andExpect(status().isOk());
+  }
+
+  private int rescheduleStatus(String authorization, long id, String request) throws Exception {
+    return mockMvc.perform(patch("/appointments/{id}", id)
+            .header(HttpHeaders.AUTHORIZATION, authorization)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(request))
+        .andReturn().getResponse().getStatus();
+  }
+
+  private int appointmentsAt(String email, LocalDateTime date) {
+    return jdbcTemplate.queryForObject("""
+        select count(*) from appointments a join users u on a.user_id = u.id
+        where u.email = ? and a.appointment_date = ? and a.status <> 'CANCELLED'
+        """, Integer.class, email, date);
+  }
+
+  private List<Integer> runCompetingWrites(Callable<Integer> first, Callable<Integer> second)
+      throws Exception {
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var writes = new TransactionTemplate(transactionManager).execute(transaction -> {
+        // Hold the first write so the other request also reaches the lock chain.
+        jdbcTemplate.execute("lock table appointments in share mode");
+        var requests = List.of(executor.submit(first), executor.submit(second));
+        awaitBlockedAppointmentWrites();
+        return requests;
+      });
+      return List.of(writes.get(0).get(10, TimeUnit.SECONDS),
+              writes.get(1).get(10, TimeUnit.SECONDS))
+          .stream().sorted().toList();
+    }
+  }
+
+  private void awaitBlockedAppointmentWrites() {
+    long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+    while (System.nanoTime() < deadline) {
+      jdbcTemplate.execute("select pg_stat_clear_snapshot()");
+      int blocked = jdbcTemplate.queryForObject("""
+          with recursive blocked(pid) as (
+            select pg_backend_pid()
+            union
+            select a.pid from pg_stat_activity a join blocked b
+              on b.pid = any(pg_blocking_pids(a.pid))
+            where a.datname = current_database()
+          )
+          select count(*) - 1 from blocked
+          """, Integer.class);
+      if (blocked == 2) {
+        return;
+      }
+      try {
+        Thread.sleep(25);
+      } catch (InterruptedException exception) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Interrupted while waiting for both writes", exception);
+      }
+    }
+    throw new AssertionError("Both requests must wait in the database before releasing the lock");
   }
 
   private List<LocalDateTime> scheduledTimes(long appointmentId) {

@@ -23,6 +23,8 @@ import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentDateI
 import com.pedrovieira.appointmentsystem.exception.appointments.AppointmentNotFoundException;
 import com.pedrovieira.appointmentsystem.exception.appointments.InvalidAppointmentDateRangeException;
 import com.pedrovieira.appointmentsystem.repository.AppointmentRepository;
+import com.pedrovieira.appointmentsystem.repository.BookingDecisionNotificationRepository;
+import com.pedrovieira.appointmentsystem.repository.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -57,6 +59,12 @@ class AppointmentServiceTest {
   private AppointmentRepository appointmentRepository;
 
   @Mock
+  private UserRepository userRepository;
+
+  @Mock
+  private BookingDecisionNotificationRepository notificationRepository;
+
+  @Mock
   private Clock clock;
 
   @BeforeEach()
@@ -70,6 +78,8 @@ class AppointmentServiceTest {
     appointmentService =
         new AppointmentService(
             appointmentRepository,
+            userRepository,
+            notificationRepository,
             clock
         );
   }
@@ -222,9 +232,10 @@ class AppointmentServiceTest {
       );
 
       when(
-          appointmentRepository.existsByUserAndAppointmentDate(
+          appointmentRepository.existsByUserAndAppointmentDateAndStatusNot(
               user,
-              request.appointmentDate()
+              request.appointmentDate(),
+              AppointmentStatus.CANCELLED
           )
       )
           .thenReturn(true);
@@ -236,7 +247,7 @@ class AppointmentServiceTest {
           );
 
       assertEquals(
-          "User already has an appointment at this time",
+          "Você já tem um agendamento nesse horário. Escolha outro horário.",
           exception.getMessage()
       );
 
@@ -1843,10 +1854,11 @@ class AppointmentServiceTest {
           appointment.getId()
       )).thenReturn(Optional.of(appointment));
 
-      when(appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
+      when(appointmentRepository.existsByUserAndAppointmentDateAndIdNotAndStatusNot(
           user,
           request.appointmentDate(),
-          appointment.getId()
+          appointment.getId(),
+              AppointmentStatus.CANCELLED
       )).thenReturn(true);
 
       // Act + Assert
@@ -1861,13 +1873,14 @@ class AppointmentServiceTest {
           );
 
       assertEquals(
-          "Appointment date conflicts with another appointment.",
+          "Esse horário coincide com outro agendamento. Escolha outro horário.",
           exception.getMessage()
       );
 
       verify(appointmentRepository)
-          .existsByUserAndAppointmentDateAndIdNot(user, request.appointmentDate(),
-              appointment.getId());
+          .existsByUserAndAppointmentDateAndIdNotAndStatusNot(user, request.appointmentDate(),
+              appointment.getId(),
+              AppointmentStatus.CANCELLED);
 
       verify(appointmentRepository, never())
           .save(any(Appointment.class));
@@ -1887,7 +1900,7 @@ class AppointmentServiceTest {
           LocalDateTime.now().plusDays(1);
 
       LocalDateTime pastDate =
-          LocalDateTime.now().minusDays(1);
+          LocalDateTime.now(clock).minusDays(1);
 
       Appointment appointment = new Appointment(
           user,
@@ -1965,10 +1978,11 @@ class AppointmentServiceTest {
       )).thenReturn(Optional.of(appointment));
 
       when(
-          appointmentRepository.existsByUserAndAppointmentDateAndIdNot(
+          appointmentRepository.existsByUserAndAppointmentDateAndIdNotAndStatusNot(
               user,
               appointmentDate,
-              appointment.getId()
+              appointment.getId(),
+              AppointmentStatus.CANCELLED
           )
       ).thenReturn(false);
 
@@ -1991,10 +2005,11 @@ class AppointmentServiceTest {
           .findByUserAndId(user, appointment.getId());
 
       verify(appointmentRepository)
-          .existsByUserAndAppointmentDateAndIdNot(
+          .existsByUserAndAppointmentDateAndIdNotAndStatusNot(
               user,
               appointmentDate,
-              appointment.getId()
+              appointment.getId(),
+              AppointmentStatus.CANCELLED
           );
 
       verify(appointmentRepository)

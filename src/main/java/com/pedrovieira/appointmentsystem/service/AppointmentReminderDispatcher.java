@@ -12,7 +12,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -22,7 +21,6 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Sends scheduled appointment reminders to their owners.
  */
 @Component
-@EnableScheduling
 @ConditionalOnProperty(name = "reminders.delivery-enabled", havingValue = "true")
 public class AppointmentReminderDispatcher {
 

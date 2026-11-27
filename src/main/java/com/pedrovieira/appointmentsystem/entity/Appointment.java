@@ -19,6 +19,7 @@ import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -38,6 +40,9 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "appointments")
 public class Appointment {
 
+  public static final int MAX_DURATION_MINUTES = 1440;
+  private static final int DEFAULT_DURATION_MINUTES = 30;
+
   private static final List<Integer> DEFAULT_REMINDER_OFFSETS_MINUTES = List.of(24 * 60);
 
   @Getter
@@ -45,6 +50,11 @@ public class Appointment {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
+
+  @Version
+  @Column(nullable = false)
+  @ColumnDefault("0")
+  private long version;
 
   @Getter
   @Setter
@@ -56,9 +66,22 @@ public class Appointment {
   private String description;
 
   @Getter
-  @Setter
   @Column(nullable = false)
   private LocalDateTime appointmentDate;
+
+  @Column(name = "duration_minutes")
+  private Integer durationMinutes = DEFAULT_DURATION_MINUTES;
+
+  @Getter
+  private String guestName;
+
+  @Getter
+  private String guestEmail;
+
+  private String bookingTimeZone;
+
+  @Getter
+  private LocalDateTime holdExpiresAt;
 
   @Getter
   @Column(nullable = false)
@@ -138,6 +161,50 @@ public class Appointment {
     );
   }
 
+  /** Changes the scheduled start without allowing a pending hold to extend past it. */
+  public void setAppointmentDate(LocalDateTime date) {
+    appointmentDate = date;
+    if (holdExpiresAt != null && date.isBefore(holdExpiresAt)) {
+      holdExpiresAt = date;
+    }
+  }
+
+  /** Sets the guest details and the deadline for a pending public request. */
+  public void holdForGuest(String name, String email, LocalDateTime expiresAt, String timeZone) {
+    guestName = name;
+    guestEmail = email;
+    holdExpiresAt = expiresAt;
+    bookingTimeZone = timeZone;
+  }
+
+  /** Returns the zone associated with a guest booking, defaulting to UTC for manual bookings. */
+  public String getBookingTimeZone() {
+    return bookingTimeZone == null ? "UTC" : bookingTimeZone;
+  }
+
+  /** Rejects changes that require an active pending request after its deadline. */
+  public void requireUnexpiredHold(LocalDateTime now) {
+    if (holdExpiresAt != null && !holdExpiresAt.isAfter(now)) {
+      throw new BusinessRuleException(
+          "O prazo para aprovar a solicitação venceu e o horário foi liberado. "
+              + "Peça ao cliente para enviar uma nova solicitação.");
+    }
+  }
+
+  /** Returns the appointment duration, including a default for existing records. */
+  public int getDurationMinutes() {
+    return durationMinutes == null ? DEFAULT_DURATION_MINUTES : durationMinutes;
+  }
+
+  /** Sets the duration in whole minutes. */
+  public void changeDuration(int minutes) {
+    if (minutes < 1 || minutes > MAX_DURATION_MINUTES) {
+      throw new IllegalArgumentException(
+          "Appointment duration must be between 1 and 1440 minutes.");
+    }
+    durationMinutes = minutes;
+  }
+
   /**
    * Returns the configured offsets, using the default for appointments created before reminders.
    */
@@ -194,6 +261,7 @@ public class Appointment {
     }
 
     this.status = AppointmentStatus.CONFIRMED;
+    holdExpiresAt = null;
   }
 
   /**
@@ -205,6 +273,7 @@ public class Appointment {
       throw new BusinessRuleException("Only pending or confirmed appointments can be cancelled");
     }
     status = AppointmentStatus.CANCELLED;
+    holdExpiresAt = null;
     reminderSchedule.clear();
   }
 

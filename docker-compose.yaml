@@ -1,18 +1,29 @@
 services:
   app:
-    container_name: app
+    profiles: [demo]
     build: .
-    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/appointment_system
+      BOOKING_REQUESTS_ENABLED: "true"
+      BOOKING_NOTIFICATIONS_ENABLED: "true"
+      BOOKING_NOTIFICATIONS_FROM: appointments@example.test
+      BOOKING_NOTIFICATIONS_POLL_INTERVAL: PT5S
+      REMINDERS_DELIVERY_ENABLED: "true"
+      REMINDERS_FROM: reminders@example.test
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: "1025"
 
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
     ports:
-      - "8080:8080"
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
 
   postgres:
-    container_name: appointment-system-postgres
     image: postgres:17
     restart: unless-stopped
 
@@ -22,7 +33,7 @@ services:
       POSTGRES_PASSWORD: postgres
 
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
 
     volumes:
       - appointment-system-postgres-data:/var/lib/postgresql/data
@@ -32,6 +43,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  mailpit:
+    profiles: [demo]
+    image: axllent/mailpit@sha256:23a2ef85bc50853ab3093645d1d64679afd8887e89da5e48a88940c172591a4e
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
 
 volumes:
   appointment-system-postgres-data:
